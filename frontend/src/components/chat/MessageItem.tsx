@@ -1,15 +1,38 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { ChatMessage, CitationItem } from "@/types/chat";
+import { downloadTechnicalReportPdf } from "@/lib/utils/pdfExport";
 
 interface MessageItemProps {
   message: ChatMessage;
+  originatingQuery?: string;
   onCitationClick: (citation: CitationItem) => void;
 }
 
-export function MessageItem({ message, onCitationClick }: MessageItemProps) {
+export function MessageItem({
+  message,
+  originatingQuery,
+  onCitationClick,
+}: MessageItemProps) {
   const isUser = message.role === "user";
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPdf = () => {
+    setIsExporting(true);
+    try {
+      downloadTechnicalReportPdf({
+        query: originatingQuery || "Technical Inquiry",
+        answerContent: message.content,
+        confidenceScore: message.confidence_score ?? 0.85,
+        provider: message.provider,
+        citations: message.citations || [],
+        timestamp: message.timestamp,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Helper to render text with interactive clickable citation badges
   const renderInlineCitations = (text: string, citations?: CitationItem[]) => {
@@ -100,7 +123,7 @@ export function MessageItem({ message, onCitationClick }: MessageItemProps) {
       elements.push(
         <div
           key={`table-block-${key}`}
-          className="overflow-x-auto my-4 border border-[var(--color-mist)] rounded-[var(--radius-inputs)] bg-[var(--surface-bone)] shadow-2xs"
+          className="overflow-x-auto my-4 border border-[var(--color-mist)] rounded-[var(--radius-inputs)] bg-[var(--surface-bone)]"
         >
           <table className="w-full text-xs font-mono border-collapse divide-y divide-[var(--color-mist)]">
             <thead className="bg-[var(--surface-bone)] text-[var(--color-olive-press)]">
@@ -169,28 +192,44 @@ export function MessageItem({ message, onCitationClick }: MessageItemProps) {
       }`}
     >
       <div className="max-w-3xl w-full">
-        {/* Author Label & Timestamp */}
-        <div className="flex items-center gap-2 mb-2 text-xs font-mono">
-          <span
-            className={`font-semibold ${
-              isUser
-                ? "text-[var(--color-olive-press)]"
-                : "text-[var(--color-sage-leaf)]"
-            }`}
-          >
-            {isUser ? "You" : "Contexure Agent"}
-          </span>
-          <span className="text-[var(--color-sage-mist)]">
-            {new Date(message.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-          {!isUser && message.provider && (
-            <span className="text-[10px] px-2 py-0.5 rounded-[var(--radius-tags)] bg-[var(--surface-bone)] border border-[var(--color-mist)] text-[var(--color-sage-gray)] uppercase">
-              {message.provider}
+        {/* Author Label, Timestamp, Provider & PDF Export Action */}
+        <div className="flex items-center justify-between mb-2 text-xs font-mono">
+          <div className="flex items-center gap-2">
+            <span
+              className={`font-semibold ${
+                isUser
+                  ? "text-[var(--color-olive-press)]"
+                  : "text-[var(--color-sage-leaf)]"
+              }`}
+            >
+              {isUser ? "You" : "Contexure Agent"}
             </span>
-          )}
+            <span className="text-[var(--color-sage-mist)]">
+              {new Date(message.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+            {!isUser && message.provider && (
+              <span className="text-[10px] px-2 py-0.5 rounded-[var(--radius-tags)] bg-[var(--surface-bone)] border border-[var(--color-mist)] text-[var(--color-sage-gray)] uppercase">
+                {message.provider}
+              </span>
+            )}
+          </div>
+
+          {!isUser &&
+            !message.isStreaming &&
+            message.content &&
+            message.passed_guardrail !== false && (
+              <button
+                onClick={handleExportPdf}
+                disabled={isExporting}
+                className="text-[11px] font-mono px-2.5 py-1 rounded-[var(--radius-buttons)] bg-[var(--surface-bone)] hover:bg-[var(--color-lichen)] border border-[var(--color-mist)] text-[var(--color-forest-ink)] transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Export technical report to PDF"
+              >
+                <span>{isExporting ? "Exporting..." : "Export PDF ↓"}</span>
+              </button>
+            )}
         </div>
 
         {/* Guardrail Refusal Alert */}

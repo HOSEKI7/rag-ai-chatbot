@@ -214,13 +214,24 @@ export default function ChatPage() {
           <EmptyState onSelectQuery={handleSendMessage} />
         ) : (
           <div className="flex-1 flex flex-col items-center">
-            {messages.map((msg) => (
-              <MessageItem
-                key={msg.id}
-                message={msg}
-                onCitationClick={(cite) => setSelectedCitation(cite)}
-              />
-            ))}
+            {messages.map((msg, idx) => {
+              const prevUserMsg =
+                msg.role === "assistant"
+                  ? [...messages.slice(0, idx)]
+                      .reverse()
+                      .find((m) => m.role === "user")?.content
+                  : undefined;
+
+              return (
+                <MessageItem
+                  key={msg.id}
+                  message={msg}
+                  originatingQuery={prevUserMsg}
+                  onCitationClick={(cite) => setSelectedCitation(cite)}
+                />
+              );
+            })}
+
             <div ref={messagesEndRef} />
           </div>
         )}
