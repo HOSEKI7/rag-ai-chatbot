@@ -72,15 +72,15 @@ export function SpecimenCatalog() {
   return (
     <section
       id="datasheets"
-      className="py-20 md:py-28 border-b border-[var(--color-mist)]"
+      className="py-24 border-b border-[var(--color-mist)]"
     >
-      {/* Header */}
+      {/* Header (Akkurat Sans) */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
         <div>
           <span className="text-xs font-mono uppercase tracking-wider text-[var(--color-sage-leaf)] block mb-2">
             CURATED SPECIMEN CATALOG
           </span>
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-[var(--color-olive-press)] tracking-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--color-olive-press)] tracking-tight">
             Indexed industrial equipment datasheets.
           </h2>
         </div>

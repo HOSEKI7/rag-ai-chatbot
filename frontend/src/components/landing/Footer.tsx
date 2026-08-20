@@ -2,14 +2,14 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="w-full bg-[var(--color-slate-hollow)] text-[var(--surface-linen)] mt-20">
-      <div className="max-w-[1200px] mx-auto px-6 py-16">
+    <footer className="w-full bg-[var(--color-slate-hollow)] text-[var(--surface-linen)] mt-24">
+      <div className="max-w-[1200px] mx-auto px-6 py-24">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-12 border-b border-[var(--color-sage-gray)]/20">
           {/* Col 1: Brand Info */}
           <div className="md:col-span-5">
             <div className="flex items-center gap-3 mb-4">
               <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-sage-leaf)]" />
-              <span className="font-serif text-2xl font-light tracking-tight text-[var(--surface-linen)]">
+              <span className="font-sans text-2xl font-medium tracking-tight text-[var(--surface-linen)]">
                 Contexure
               </span>
             </div>

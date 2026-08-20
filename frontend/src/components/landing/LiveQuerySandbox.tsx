@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { retrieveQuery, RetrieveResponseData } from "@/lib/api/retrieve";
 
 interface ProbeResult {
   passed: boolean;
@@ -18,18 +19,15 @@ const PRESET_QUERIES = [
   {
     label: "Siemens 1LE1 Torque (In-Scope)",
     query: "What is the rated torque and efficiency of the Siemens 1LE1 motor?",
-    type: "in_scope",
   },
   {
     label: "Omron E2E Voltage (In-Scope)",
     query:
       "What is the operating voltage range and output type for Omron E2E sensor?",
-    type: "in_scope",
   },
   {
     label: "Cookie Recipe (Guardrail Trigger)",
     query: "What is the recipe for baking chocolate chip cookies?",
-    type: "out_of_scope",
   },
 ];
 
@@ -46,29 +44,18 @@ export function LiveQuerySandbox() {
     setResult(null);
 
     try {
-      const res = await fetch(
-        `${backendUrl.replace(/\/$/, "")}/api/v1/retrieve`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: queryText,
-            limit: 3,
-            confidence_threshold: 0.65,
-          }),
-        }
+      const data: RetrieveResponseData = await retrieveQuery(
+        backendUrl,
+        queryText,
+        0.65,
+        3
       );
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
       setResult({
         passed: data.passed_guardrail,
         confidence: data.confidence_score,
         answer: data.passed_guardrail
-          ? `Verified against ${data.citations?.length || 0} datasheet sections. Full context synthesized with [1] citations.`
+          ? `Verified against ${data.citations?.length || 0} datasheet sections. Reconstructed context assembled for generation.`
           : data.refusal_message ||
             "Refused: Confidence score fell below the 0.65 safety threshold.",
         provider: data.passed_guardrail
@@ -77,7 +64,7 @@ export function LiveQuerySandbox() {
         citations: data.citations || [],
       });
     } catch {
-      // Local demo fallback if backend is offline
+      // Local fallback for offline environment
       const isOutOfScope =
         queryText.toLowerCase().includes("cookie") ||
         queryText.toLowerCase().includes("recipe");
@@ -85,7 +72,7 @@ export function LiveQuerySandbox() {
         passed: !isOutOfScope,
         confidence: isOutOfScope ? 0.12 : 0.88,
         answer: isOutOfScope
-          ? "The query could not be verified against the indexed industrial datasheets. (Confidence score 0.12 below 0.65 threshold)."
+          ? "The query could not be verified against the indexed industrial datasheets. (Confidence score below threshold)."
           : "Verified against indexed technical datasheets [1]. Rated specifications are verified.",
         provider: isOutOfScope ? "Guardrail Refusal" : "Local Verified Probe",
         citations: isOutOfScope
@@ -104,15 +91,13 @@ export function LiveQuerySandbox() {
   };
 
   return (
-    <section
-      id="sandbox"
-      className="py-20 md:py-28 border-b border-[var(--color-mist)]"
-    >
+    <section id="sandbox" className="py-24 border-b border-[var(--color-mist)]">
+      {/* Section Header (Akkurat Sans) */}
       <div className="mb-12">
         <span className="text-xs font-mono uppercase tracking-wider text-[var(--color-sage-leaf)] block mb-2">
           INTERACTIVE RAG SANDBOX & GUARDRAIL PROBE
         </span>
-        <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-[var(--color-olive-press)] tracking-tight">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--color-olive-press)] tracking-tight">
           Test confidence cutoffs live.
         </h2>
       </div>

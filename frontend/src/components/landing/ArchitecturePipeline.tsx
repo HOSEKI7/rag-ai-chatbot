@@ -82,7 +82,7 @@ vector = embedder.embed_query("What is the motor rated torque?")
     summary:
       "Prunes top-20 vector candidates to top-5 using FlashRank cross-encoder, evaluating confidence against a strict θ ≥ 0.65 threshold to stop hallucinations.",
     details: [
-      "ms-marco-TinyBERT cross-encoder joint scoring (query + passage)",
+      "ms-marco-TinyBERT cross-encoder joint scoring (query + chunk)",
       "Sigmoid calibrated confidence scores in [0.0, 1.0]",
       "Deterministic out-of-scope refusal without invoking LLMs",
     ],
@@ -119,19 +119,19 @@ export function ArchitecturePipeline() {
   return (
     <section
       id="architecture"
-      className="py-20 md:py-28 border-b border-[var(--color-mist)]"
+      className="py-24 border-b border-[var(--color-mist)]"
     >
-      {/* Section Header */}
+      {/* Section Header (Akkurat Sans) */}
       <div className="mb-12">
         <span className="text-xs font-mono uppercase tracking-wider text-[var(--color-sage-leaf)] block mb-2">
           SYSTEM ARCHITECTURE & RAG PIPELINE
         </span>
-        <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-[var(--color-olive-press)] tracking-tight">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--color-olive-press)] tracking-tight">
           How Contexure guarantees deterministic accuracy.
         </h2>
       </div>
 
-      {/* Stage Navigation Pills */}
+      {/* Stage Navigation Pills (Flat, Zero Drop Shadow) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-8">
         {PIPELINE_STEPS.map((step) => {
           const isActive = step.id === activeStep.id;
@@ -141,7 +141,7 @@ export function ArchitecturePipeline() {
               onClick={() => setActiveStep(step)}
               className={`p-3 rounded-[var(--radius-cards)] border text-left transition-all cursor-pointer ${
                 isActive
-                  ? "bg-[var(--color-forest-ink)] text-[var(--surface-linen)] border-[var(--color-forest-ink)] shadow-sm"
+                  ? "bg-[var(--color-forest-ink)] text-[var(--surface-linen)] border-[var(--color-forest-ink)]"
                   : "bg-[var(--surface-bone)] text-[var(--color-olive-press)] border-[var(--color-mist)] hover:border-[var(--color-lichen)]"
               }`}
             >

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-akkurat);
+  --font-serif: var(--font-newsreader);
+  --font-mono: var(--font-fragment-mono);
+}
+
 :root {
   /* Adaline Design System Color Tokens */
   --color-forest-ink: #0a1d08;

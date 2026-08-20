@@ -10,10 +10,10 @@ export function Header({ isHealthy }: HeaderProps) {
   return (
     <header className="w-full border-b border-[var(--color-mist)] bg-[var(--surface-linen)] sticky top-0 z-50 backdrop-blur-md">
       <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Brand Mark */}
+        {/* Brand Mark (Akkurat Sans) */}
         <Link href="/" className="flex items-center gap-3 group">
           <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-sage-leaf)] group-hover:scale-110 transition-transform" />
-          <span className="font-serif text-xl font-normal text-[var(--color-olive-press)] tracking-tight">
+          <span className="font-sans text-xl font-medium text-[var(--color-olive-press)] tracking-tight">
             Contexure
           </span>
           <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-[var(--radius-tags)] bg-[var(--color-eucalyptus)] text-[var(--color-forest-ink)] font-mono border border-[var(--color-lichen)]">

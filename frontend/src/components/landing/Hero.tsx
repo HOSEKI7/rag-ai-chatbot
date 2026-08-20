@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function Hero() {
   return (
-    <section className="py-20 md:py-28 flex flex-col items-start border-b border-[var(--color-mist)]">
+    <section className="py-24 flex flex-col items-start border-b border-[var(--color-mist)]">
       {/* Field Note Eyebrow */}
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[var(--radius-tags)] bg-[var(--surface-bone)] border border-[var(--color-mist)] mb-8">
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-sage-leaf)]" />
@@ -11,7 +11,7 @@ export function Hero() {
         </span>
       </div>
 
-      {/* Main Literary Serif Display Headline */}
+      {/* Main Literary Serif Display Headline (Newsreader 300) */}
       <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl lg:text-[76px] font-light text-[var(--color-olive-press)] leading-[0.98] tracking-tight mb-8 max-w-4xl">
         Deterministic intelligence for industrial machinery.
       </h1>
@@ -23,11 +23,11 @@ export function Hero() {
         footnote citations.
       </p>
 
-      {/* Dual CTA Buttons */}
+      {/* Dual CTA Buttons (Flat, Zero Drop Shadow) */}
       <div className="flex flex-wrap items-center gap-4 mb-16">
         <Link
           href="/chat"
-          className="px-6 py-3 rounded-[var(--radius-buttons)] bg-[var(--color-forest-ink)] text-[var(--surface-linen)] text-sm font-medium hover:bg-[var(--color-olive-press)] transition-colors shadow-sm cursor-pointer"
+          className="px-6 py-3 rounded-[var(--radius-buttons)] bg-[var(--color-forest-ink)] text-[var(--surface-linen)] text-sm font-medium hover:bg-[var(--color-olive-press)] transition-colors cursor-pointer"
         >
           Start Technical Query →
         </Link>
