@@ -21,17 +21,27 @@ export function AdminHeader() {
             <span className="font-sans text-base font-medium text-[var(--color-olive-press)]">
               Contexure Admin Portal
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-[var(--radius-tags)] bg-[var(--color-eucalyptus)] text-[var(--color-forest-ink)]">
-              Operator Access
-            </span>
           </div>
         </div>
 
         {/* Right: Quick Links */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 text-xs font-medium">
+          <Link
+            href="/admin"
+            className="text-[var(--color-sage-gray)] hover:text-[var(--color-forest-ink)] transition-colors"
+          >
+            Documents
+          </Link>
+          <Link
+            href="/admin/observability"
+            className="text-[var(--color-sage-gray)] hover:text-[var(--color-forest-ink)] transition-colors"
+          >
+            Observability
+          </Link>
+          <div className="h-4 w-px bg-[var(--color-mist)]" />
           <Link
             href="/chat"
-            className="text-xs font-medium text-[var(--color-sage-gray)] hover:text-[var(--color-forest-ink)] underline underline-offset-4 hidden sm:inline-block"
+            className="text-[var(--color-olive-press)] hover:text-[var(--color-forest-ink)] underline underline-offset-4 hidden sm:inline-block"
           >
             Open Chat Workspace →
           </Link>

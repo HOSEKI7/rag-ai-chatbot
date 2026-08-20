@@ -11,8 +11,10 @@ from app.services.retrieval_pipeline import (
 )
 from app.services.prompt_builder import build_rag_prompt, ChatMessage
 from app.services.llm_provider import get_llm_provider, StreamToken
+from app.services.analytics import get_analytics_service, QueryTrace
 
 router = APIRouter()
+
 
 
 class ChatRequest(BaseModel):
@@ -73,9 +75,28 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
             "latency_ms": elapsed_ms,
         }
         yield f"data: {json.dumps(done_event)}\n\n"
+
+        # Record analytics trace for refusal
+        try:
+            get_analytics_service().record_trace(
+                QueryTrace(
+                    query=request.query,
+                    latency_ms=elapsed_ms,
+                    retrieval_latency_ms=elapsed_ms,
+                    generation_latency_ms=0.0,
+                    confidence_score=retrieval_res.confidence_score,
+                    passed_guardrail=False,
+                    provider="guardrail_refusal",
+                    retrieved_documents=[c.document_id for c in retrieval_res.citations],
+                    refusal_reason=retrieval_res.refusal_message,
+                )
+            )
+        except Exception:
+            pass
         return
 
     # 4. Grounded Prompt Building
+    retrieval_elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
     system_prompt, user_prompt = build_rag_prompt(
         query=request.query,
         reconstructed_context=retrieval_res.reconstructed_context,
@@ -85,6 +106,7 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
     # 5. Stream LLM Tokens with Automatic Fallback
     llm_provider = get_llm_provider()
     active_provider = "unknown"
+    gen_start = time.perf_counter()
 
     try:
         async for stream_token in llm_provider.stream_generation(
@@ -107,7 +129,8 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
         }
         yield f"data: {json.dumps(error_event)}\n\n"
 
-    # 6. Emit Done Event
+    # 6. Emit Done Event & Record Telemetry
+    gen_elapsed_ms = round((time.perf_counter() - gen_start) * 1000, 2)
     elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
     done_event = {
         "type": "done",
@@ -115,6 +138,23 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
         "latency_ms": elapsed_ms,
     }
     yield f"data: {json.dumps(done_event)}\n\n"
+
+    try:
+        get_analytics_service().record_trace(
+            QueryTrace(
+                query=request.query,
+                latency_ms=elapsed_ms,
+                retrieval_latency_ms=retrieval_elapsed_ms,
+                generation_latency_ms=gen_elapsed_ms,
+                confidence_score=retrieval_res.confidence_score,
+                passed_guardrail=True,
+                provider=active_provider,
+                retrieved_documents=[c.document_id for c in retrieval_res.citations],
+                refusal_reason=None,
+            )
+        )
+    except Exception:
+        pass
 
 
 @router.post("/chat")
