@@ -24,8 +24,7 @@ export function MessageItem({
       downloadTechnicalReportPdf({
         query: originatingQuery || "Technical Inquiry",
         answerContent: message.content,
-        confidenceScore: message.confidence_score ?? 0.85,
-        provider: message.provider,
+        confidenceScore: message.confidence_score ?? 1.0,
         citations: message.citations || [],
         timestamp: message.timestamp,
       });
