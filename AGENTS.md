@@ -14,7 +14,7 @@ Default vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 
 Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 
-## Working Agreement
+## Working agreement
 
 - **Language split:** All shipped output — UI text, identifiers, code, docs — is **English**. Chat, plans, questions, and code comments to the owner are written in **Bahasa Indonesia**.
 - After finishing a task and do changes, **provide a suggested commit message**.
@@ -23,7 +23,7 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 
 read **docs\spec\contexure-spec.md**.
 
-## Design
+## Design systems
 
 Read **DESIGN.md**.
 
