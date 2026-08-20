@@ -25,6 +25,7 @@ class RetrievedChunk(BaseModel):
     parent_text: str
     token_count: int
     is_table: bool
+    page_number: int = 1
     score: float
 
 
@@ -103,6 +104,7 @@ class VectorStoreService:
                 "parent_text": parent_map.get(child.parent_id, child.text),
                 "token_count": child.token_count,
                 "is_table": child.is_table,
+                "page_number": child.page_number,
             }
 
             points.append(
@@ -165,15 +167,12 @@ class VectorStoreService:
                     parent_text=payload.get("parent_text", ""),
                     token_count=payload.get("token_count", 0),
                     is_table=payload.get("is_table", False),
+                    page_number=payload.get("page_number", 1),
                     score=float(point.score),
                 )
             )
 
         return hits
-
-    # Alias search to retrieve_chunks for backwards compatibility
-    def search(self, *args, **kwargs):
-        return [h.model_dump() for h in self.retrieve_chunks(*args, **kwargs)]
 
     def list_indexed_documents(self) -> List[IndexedDocument]:
         """

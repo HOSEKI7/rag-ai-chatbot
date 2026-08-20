@@ -1,47 +1,70 @@
 import io
 import re
-from typing import Dict, Any, Tuple
+from typing import Dict, List, Optional
+from pydantic import BaseModel
 import pymupdf
 import pymupdf4llm
-from pypdf import PdfReader
 
 
-def parse_pdf_bytes(pdf_bytes: bytes, filename: str = "document.pdf") -> Tuple[str, Dict[str, Any]]:
+class ParsedDocument(BaseModel):
+    markdown: str
+    title: str
+    filename: str
+    page_count: int
+    page_map: Dict[int, str] = {}
+
+
+def parse_pdf_bytes(pdf_bytes: bytes, filename: str = "source_document.pdf") -> ParsedDocument:
     """
-    Parses PDF bytes into structured markdown representation, preserving tables and section hierarchy.
-    Returns a tuple of (markdown_text, metadata).
+    Parses PDF bytes into structured markdown representation, preserving tables and section hierarchy,
+    along with page mapping metadata.
     """
-    metadata: Dict[str, Any] = {
-        "filename": filename,
-        "page_count": 0,
-        "title": filename,
-    }
-
     try:
-        # Open PDF document in PyMuPDF from memory stream
         doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
-        metadata["page_count"] = len(doc)
-        
-        # Extract title from PDF metadata if available
+        page_count = len(doc)
+        title = filename
         if doc.metadata and doc.metadata.get("title"):
-            metadata["title"] = doc.metadata["title"].strip() or filename
+            extracted_title = doc.metadata["title"].strip()
+            if extracted_title:
+                title = extracted_title
 
-        # Extract structured markdown using pymupdf4llm
+        page_map: Dict[int, str] = {}
+        for page_idx in range(page_count):
+            page_text = doc[page_idx].get_text().strip()
+            page_map[page_idx + 1] = page_text
+
+        # Extract structured markdown across entire document
         md_text = pymupdf4llm.to_markdown(doc)
         doc.close()
 
-        # Clean excessive blank lines while preserving table structure
         cleaned_md = re.sub(r"\n{3,}", "\n\n", md_text).strip()
-        return cleaned_md, metadata
+        return ParsedDocument(
+            markdown=cleaned_md,
+            title=title,
+            filename=filename,
+            page_count=page_count,
+            page_map=page_map,
+        )
 
-    except Exception as e:
-        # Fallback to standard pypdf extraction if layout-based parser encounters issues
-        reader = PdfReader(io.BytesIO(pdf_bytes))
-        metadata["page_count"] = len(reader.pages)
-        pages_text = []
-        for i, page in enumerate(reader.pages):
-            page_content = page.extract_text() or ""
-            pages_text.append(f"## Page {i + 1}\n\n{page_content.strip()}")
-        
+    except Exception:
+        # Fallback extraction
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+        page_count = len(doc)
+        pages_text: List[str] = []
+        page_map: Dict[int, str] = {}
+
+        for i in range(page_count):
+            page_num = i + 1
+            text = doc[i].get_text().strip()
+            page_map[page_num] = text
+            pages_text.append(f"## Page {page_num}\n\n{text}")
+
+        doc.close()
         fallback_md = "\n\n".join(pages_text).strip()
-        return fallback_md, metadata
+        return ParsedDocument(
+            markdown=fallback_md,
+            title=filename,
+            filename=filename,
+            page_count=page_count,
+            page_map=page_map,
+        )

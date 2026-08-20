@@ -1,6 +1,7 @@
+import json
 import re
 import uuid
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 from pydantic import BaseModel
 from app.services.parser import parse_pdf_bytes
@@ -19,6 +20,7 @@ class IngestResponse(BaseModel):
     page_count: int
     parent_chunk_count: int
     child_chunk_count: int
+    metadata: Dict[str, Any] = {}
     message: str
 
 
@@ -27,6 +29,7 @@ async def ingest_document(
     file: UploadFile = File(...),
     document_title: Optional[str] = Form(None),
     category: Optional[str] = Form("Datasheet"),
+    metadata: Optional[str] = Form(None),
 ) -> IngestResponse:
     """
     Ingest a PDF source document:
@@ -48,21 +51,26 @@ async def ingest_document(
             detail="Uploaded source document is empty.",
         )
 
-    # 1. Parse Source Document
-    parsed_markdown, metadata = parse_pdf_bytes(pdf_bytes, filename=file.filename)
+    parsed_doc = parse_pdf_bytes(pdf_bytes, filename=file.filename)
     
-    title = document_title or metadata.get("title") or file.filename
-    # Generate clean document ID
+    title = document_title or parsed_doc.title or file.filename
     sanitized_slug = re.sub(r"[^a-zA-Z0-9_-]", "_", title.lower())[:24]
     doc_id = f"doc_{sanitized_slug}_{uuid.uuid4().hex[:6]}"
     doc_category = category or "Datasheet"
 
-    # 2. Chunking (Structure-Aware + Hierarchical)
+    parsed_extra_metadata: Dict[str, Any] = {}
+    if metadata:
+        try:
+            parsed_extra_metadata = json.loads(metadata)
+        except Exception:
+            parsed_extra_metadata = {"raw": metadata}
+
     parents, children = chunk_document_structure_aware(
-        text=parsed_markdown,
+        text=parsed_doc.markdown,
         document_id=doc_id,
         document_title=title,
         category=doc_category,
+        page_map=parsed_doc.page_map,
     )
 
     if not children:
@@ -71,12 +79,12 @@ async def ingest_document(
             detail="Could not extract any text chunks from the provided source document.",
         )
 
-    # 3. Local Embedding
+    # Local Embedding
     embedding_service = get_embedding_service()
     child_texts = [child.text for child in children]
     embeddings = embedding_service.embed_documents(child_texts)
 
-    # 4. Qdrant Vector Storage
+    # Qdrant Vector Storage
     vector_store = get_vector_store()
     vector_store.upsert_chunks(
         parents=parents,
@@ -89,9 +97,10 @@ async def ingest_document(
         document_id=doc_id,
         document_title=title,
         category=doc_category,
-        page_count=metadata.get("page_count", 1),
+        page_count=parsed_doc.page_count,
         parent_chunk_count=len(parents),
         child_chunk_count=len(children),
+        metadata=parsed_extra_metadata,
         message=f"Successfully ingested {title} ({len(children)} searchable vectors generated)",
     )
 
