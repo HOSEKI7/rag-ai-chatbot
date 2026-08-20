@@ -49,5 +49,5 @@ def test_reranker_ranks_relevant_chunk_higher():
     assert all(isinstance(c, RerankedChunk) for c in reranked)
     # The relevant specifications chunk must be reranked to rank #1
     assert reranked[0].id == "chunk-motor-specs"
-    assert reranked[0].rerank_score > reranked[1].rerank_score
-    assert 0.0 <= reranked[0].rerank_score <= 1.0
+    assert reranked[0].confidence_score > reranked[1].confidence_score
+    assert 0.0 <= reranked[0].confidence_score <= 1.0

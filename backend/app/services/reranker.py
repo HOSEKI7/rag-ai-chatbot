@@ -1,3 +1,4 @@
+import math
 from typing import List, Optional
 from pydantic import BaseModel
 from flashrank import Ranker, RerankRequest
@@ -6,20 +7,29 @@ from app.services.vector_store import RetrievedChunk
 DEFAULT_RERANK_MODEL = "ms-marco-TinyBERT-L-2-v2"
 
 
-class RerankedChunk(BaseModel):
-    id: str
-    document_id: str
-    document_title: str
-    category: str
-    section_title: str
-    parent_id: str
-    text: str
-    parent_text: str
-    token_count: int
-    is_table: bool
-    page_number: int = 1
-    vector_score: float
-    rerank_score: float
+def _sigmoid(x: float) -> float:
+    """Computes sigmoid to map cross-encoder logits cleanly to [0.0, 1.0]."""
+    try:
+        return 1.0 / (1.0 + math.exp(-x))
+    except OverflowError:
+        return 0.0 if x < 0 else 1.0
+
+
+class RerankedChunk(RetrievedChunk):
+    """
+    Candidate chunk with cross-encoder confidence score evaluation.
+    Inherits all structured metadata from RetrievedChunk to prevent data clumps.
+    """
+    similarity_score: float = 0.0
+    confidence_score: float = 0.0
+
+    @classmethod
+    def from_retrieved(cls, chunk: RetrievedChunk, confidence_score: float) -> "RerankedChunk":
+        return cls(
+            **chunk.model_dump(),
+            similarity_score=chunk.score,
+            confidence_score=round(confidence_score, 4),
+        )
 
 
 class RerankerService:
@@ -44,8 +54,8 @@ class RerankerService:
         if not candidates:
             return []
 
-        # Construct passages for FlashRank
-        passages = [
+        # Prepare candidate chunk inputs for FlashRank
+        candidate_items = [
             {
                 "id": c.id,
                 "text": c.text,
@@ -54,31 +64,24 @@ class RerankerService:
             for c in candidates
         ]
 
-        rerank_request = RerankRequest(query=query, passages=passages)
+        rerank_request = RerankRequest(query=query, passages=candidate_items)
         ranked_results = self._ranker.rerank(rerank_request)
 
         reranked_chunks: List[RerankedChunk] = []
         for res in ranked_results[:top_k]:
             original_chunk: RetrievedChunk = res["meta"]
             raw_score = float(res.get("score", 0.0))
-            # Bound score to [0.0, 1.0] range
-            normalized_score = max(0.0, min(1.0, raw_score))
+            
+            # If raw score is in [0.0, 1.0], use directly; otherwise apply sigmoid normalization
+            if 0.0 <= raw_score <= 1.0:
+                normalized_score = raw_score
+            else:
+                normalized_score = _sigmoid(raw_score)
 
             reranked_chunks.append(
-                RerankedChunk(
-                    id=original_chunk.id,
-                    document_id=original_chunk.document_id,
-                    document_title=original_chunk.document_title,
-                    category=original_chunk.category,
-                    section_title=original_chunk.section_title,
-                    parent_id=original_chunk.parent_id,
-                    text=original_chunk.text,
-                    parent_text=original_chunk.parent_text,
-                    token_count=original_chunk.token_count,
-                    is_table=original_chunk.is_table,
-                    page_number=original_chunk.page_number,
-                    vector_score=original_chunk.score,
-                    rerank_score=round(normalized_score, 4),
+                RerankedChunk.from_retrieved(
+                    chunk=original_chunk,
+                    confidence_score=normalized_score,
                 )
             )
 

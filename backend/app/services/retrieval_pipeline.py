@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Tuple, Set
 from pydantic import BaseModel
 from app.core.config import settings
 from app.services.embedding import get_embedding_service
@@ -24,6 +24,50 @@ class PipelineRetrievalResult(BaseModel):
     chunks: List[RerankedChunk] = []
     reconstructed_context: str = ""
     citations: List[CitationMetadata] = []
+
+
+def _assemble_deduplicated_context(
+    reranked_chunks: List[RerankedChunk],
+) -> Tuple[str, List[CitationMetadata]]:
+    """
+    Deduplicates parent chunk contexts across top-ranked chunks and generates
+    sequential, 1-to-1 matching citation headers.
+    """
+    citations: List[CitationMetadata] = []
+    context_blocks: List[str] = []
+    seen_parents: Set[str] = set()
+    citation_idx = 1
+
+    for chunk in reranked_chunks:
+        if chunk.parent_id in seen_parents:
+            continue
+
+        seen_parents.add(chunk.parent_id)
+
+        citations.append(
+            CitationMetadata(
+                index=citation_idx,
+                document_id=chunk.document_id,
+                document_title=chunk.document_title,
+                category=chunk.category,
+                section_title=chunk.section_title,
+                page_number=chunk.page_number,
+                chunk_id=chunk.id,
+                parent_id=chunk.parent_id,
+            )
+        )
+
+        context_header = (
+            f"[Citation {citation_idx}: {chunk.document_title} > "
+            f"{chunk.section_title} (Page {chunk.page_number})]"
+        )
+        content = chunk.parent_text if chunk.parent_text else chunk.text
+        context_blocks.append(f"{context_header}\n{content.strip()}")
+
+        citation_idx += 1
+
+    reconstructed_context = "\n\n---\n\n".join(context_blocks)
+    return reconstructed_context, citations
 
 
 def execute_retrieval_pipeline(
@@ -75,7 +119,7 @@ def execute_retrieval_pipeline(
         top_k=k_rerank,
     )
 
-    top_score = reranked_chunks[0].rerank_score if reranked_chunks else 0.0
+    top_score = reranked_chunks[0].confidence_score if reranked_chunks else 0.0
 
     # 4. Confidence Guardrail Check
     if top_score < threshold:
@@ -89,39 +133,7 @@ def execute_retrieval_pipeline(
         )
 
     # 5. Parent Context Reconstruction & Citation Assembling
-    citations: List[CitationMetadata] = []
-    context_blocks: List[str] = []
-    seen_parents: set = set()
-    citation_idx = 1
-
-    for chunk in reranked_chunks:
-        # Create citation entry
-        citations.append(
-            CitationMetadata(
-                index=citation_idx,
-                document_id=chunk.document_id,
-                document_title=chunk.document_title,
-                category=chunk.category,
-                section_title=chunk.section_title,
-                page_number=chunk.page_number,
-                chunk_id=chunk.id,
-                parent_id=chunk.parent_id,
-            )
-        )
-
-        # Deduplicate parent text across top chunks to prevent context duplication
-        if chunk.parent_id not in seen_parents:
-            seen_parents.add(chunk.parent_id)
-            context_header = (
-                f"[Citation {citation_idx}: {chunk.document_title} > "
-                f"{chunk.section_title} (Page {chunk.page_number})]"
-            )
-            content = chunk.parent_text if chunk.parent_text else chunk.text
-            context_blocks.append(f"{context_header}\n{content.strip()}")
-
-        citation_idx += 1
-
-    reconstructed_context = "\n\n---\n\n".join(context_blocks)
+    reconstructed_context, citations = _assemble_deduplicated_context(reranked_chunks)
 
     return PipelineRetrievalResult(
         passed_guardrail=True,
