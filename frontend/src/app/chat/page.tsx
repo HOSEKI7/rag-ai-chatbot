@@ -7,6 +7,7 @@ import { ChatHeader } from "@/components/chat/ChatHeader";
 import { EmptyState } from "@/components/chat/EmptyState";
 import { MessageItem } from "@/components/chat/MessageItem";
 import { CitationDrawer } from "@/components/chat/CitationDrawer";
+import { CompareModal } from "@/components/chat/CompareModal";
 import { ChatInput } from "@/components/chat/ChatInput";
 
 const STORAGE_KEY = "contexure_chat_messages";
@@ -17,6 +18,7 @@ export default function ChatPage() {
   const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(
     null
   );
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -187,7 +189,11 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen bg-[var(--surface-linen)] flex flex-col justify-between text-[var(--color-forest-ink)]">
       {/* Top Header */}
-      <ChatHeader onClear={handleClearChat} messageCount={messages.length} />
+      <ChatHeader
+        onClear={handleClearChat}
+        onOpenCompare={() => setIsCompareOpen(true)}
+        messageCount={messages.length}
+      />
 
       {/* Main Chat Scroll Container */}
       <main className="flex-1 max-w-[1200px] w-full mx-auto px-6 py-8 flex flex-col justify-between">
@@ -232,6 +238,13 @@ export default function ChatPage() {
       <CitationDrawer
         citation={selectedCitation}
         onClose={() => setSelectedCitation(null)}
+      />
+
+      {/* Compare Modal */}
+      <CompareModal
+        isOpen={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        onCompare={(docIds, queryText) => handleSendMessage(queryText)}
       />
     </div>
   );

@@ -4,10 +4,15 @@ import Link from "next/link";
 
 interface ChatHeaderProps {
   onClear: () => void;
+  onOpenCompare?: () => void;
   messageCount: number;
 }
 
-export function ChatHeader({ onClear, messageCount }: ChatHeaderProps) {
+export function ChatHeader({
+  onClear,
+  onOpenCompare,
+  messageCount,
+}: ChatHeaderProps) {
   return (
     <header className="w-full border-b border-[var(--color-mist)] bg-[var(--surface-linen)] sticky top-0 z-40 backdrop-blur-md">
       <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
@@ -37,6 +42,14 @@ export function ChatHeader({ onClear, messageCount }: ChatHeaderProps) {
           <span className="text-xs font-mono text-[var(--color-sage-mist)] hidden sm:inline-block">
             {messageCount} {messageCount === 1 ? "turn" : "turns"}
           </span>
+          {onOpenCompare && (
+            <button
+              onClick={onOpenCompare}
+              className="px-3 py-1.5 rounded-[var(--radius-buttons)] bg-[var(--surface-bone)] border border-[var(--color-mist)] text-[var(--color-forest-ink)] text-xs font-medium hover:border-[var(--color-forest-ink)] transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span>Compare Specs ⇄</span>
+            </button>
+          )}
           <button
             onClick={onClear}
             className="px-3.5 py-1.5 rounded-[var(--radius-buttons)] border border-[var(--color-lichen)] text-[var(--color-olive-press)] text-xs font-mono font-medium hover:bg-[var(--surface-bone)] hover:border-[var(--color-forest-ink)] transition-all cursor-pointer"
