@@ -17,6 +17,7 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 ## Working Agreement
 
 - **Language split:** All shipped output — UI text, identifiers, code, docs — is **English**. Chat, plans, questions, and code comments to the owner are written in **Bahasa Indonesia**.
+- After finishing a task and do changes, **provide a suggested commit message**.
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
