@@ -12,9 +12,9 @@ from app.services.retrieval_pipeline import (
 from app.services.prompt_builder import build_rag_prompt, ChatMessage
 from app.services.llm_provider import get_llm_provider, StreamToken
 from app.services.analytics import get_analytics_service, QueryTrace
+from app.services.compare_service import compare_documents_pipeline
 
 router = APIRouter()
-
 
 
 class ChatRequest(BaseModel):
@@ -54,39 +54,72 @@ def _record_telemetry(
         pass
 
 
+def _is_comparison_query(request: ChatRequest) -> bool:
+    if request.filter_doc_ids and len(request.filter_doc_ids) >= 2:
+        return True
+    lower = request.query.lower()
+    return any(w in lower for w in ["compare", " vs ", "versus", "difference between", "comparison between"])
+
+
 async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
     """
     Asynchronous Server-Sent Events (SSE) streaming generator:
-    1. Executes hybrid retrieval and confidence guardrail.
-    2. Emits metadata SSE payload with citations, excerpt, and confidence score.
+    1. Executes retrieval (or balanced multi-document comparison if applicable).
+    2. Emits metadata SSE payload with citations and confidence score.
     3. If guardrail fails, streams deterministic refusal response.
     4. If guardrail passes, streams grounded LLM tokens with automatic provider fallback.
     5. Emits completion event with execution metrics.
     """
     start_time = time.perf_counter()
+    is_compare = _is_comparison_query(request)
 
-    # 1. Retrieval & Guardrail Pipeline
-    retrieval_res: PipelineRetrievalResult = execute_retrieval_pipeline(
-        query=request.query,
-        filter_doc_ids=request.filter_doc_ids,
-        confidence_threshold=request.confidence_threshold,
-    )
+    if is_compare and request.filter_doc_ids and len(request.filter_doc_ids) >= 2:
+        compare_res = compare_documents_pipeline(
+            doc_ids=request.filter_doc_ids,
+            query=request.query,
+        )
+        passed_guardrail = compare_res.passed_guardrail
+        confidence_score = compare_res.confidence_score
+        citations = compare_res.citations
+        refusal_message = compare_res.refusal_message
+        system_prompt = compare_res.system_prompt
+        user_prompt = compare_res.user_prompt
+    else:
+        # Standard Hybrid Retrieval & Guardrail Pipeline
+        retrieval_res: PipelineRetrievalResult = execute_retrieval_pipeline(
+            query=request.query,
+            filter_doc_ids=request.filter_doc_ids,
+            confidence_threshold=request.confidence_threshold,
+        )
+        passed_guardrail = retrieval_res.passed_guardrail
+        confidence_score = retrieval_res.confidence_score
+        citations = retrieval_res.citations
+        refusal_message = retrieval_res.refusal_message
+
+        if passed_guardrail:
+            system_prompt, user_prompt = build_rag_prompt(
+                query=request.query,
+                reconstructed_context=retrieval_res.reconstructed_context,
+                history=request.history,
+            )
+        else:
+            system_prompt, user_prompt = "", ""
 
     # 2. Emit Metadata Event
     metadata_event = {
         "type": "metadata",
-        "passed_guardrail": retrieval_res.passed_guardrail,
-        "confidence_score": retrieval_res.confidence_score,
-        "citations": [c.model_dump() for c in retrieval_res.citations],
-        "refusal_message": retrieval_res.refusal_message,
+        "passed_guardrail": passed_guardrail,
+        "confidence_score": confidence_score,
+        "citations": [c.model_dump() for c in citations],
+        "refusal_message": refusal_message,
         "conversation_id": request.conversation_id,
     }
     yield f"data: {json.dumps(metadata_event)}\n\n"
 
     # 3. Guardrail Refusal Stream
-    if not retrieval_res.passed_guardrail:
+    if not passed_guardrail:
         refusal_text = (
-            retrieval_res.refusal_message
+            refusal_message
             or "The query could not be verified against the indexed industrial datasheets."
         )
         refusal_token_event = {
@@ -110,23 +143,16 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
             latency_ms=elapsed_ms,
             retrieval_latency_ms=elapsed_ms,
             generation_latency_ms=0.0,
-            confidence_score=retrieval_res.confidence_score,
+            confidence_score=confidence_score,
             passed_guardrail=False,
             provider="guardrail_refusal",
-            citations=retrieval_res.citations,
-            refusal_reason=retrieval_res.refusal_message,
+            citations=citations,
+            refusal_reason=refusal_message,
         )
         return
 
-    # 4. Grounded Prompt Building
+    # 4. Stream LLM Tokens with Automatic Fallback
     retrieval_elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-    system_prompt, user_prompt = build_rag_prompt(
-        query=request.query,
-        reconstructed_context=retrieval_res.reconstructed_context,
-        history=request.history,
-    )
-
-    # 5. Stream LLM Tokens with Automatic Fallback
     llm_provider = get_llm_provider()
     active_provider = "unknown"
     gen_start = time.perf_counter()
@@ -152,7 +178,7 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
         }
         yield f"data: {json.dumps(error_event)}\n\n"
 
-    # 6. Emit Done Event & Record Telemetry
+    # 5. Emit Done Event & Record Telemetry
     gen_elapsed_ms = round((time.perf_counter() - gen_start) * 1000, 2)
     elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
     done_event = {
@@ -167,13 +193,12 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
         latency_ms=elapsed_ms,
         retrieval_latency_ms=retrieval_elapsed_ms,
         generation_latency_ms=gen_elapsed_ms,
-        confidence_score=retrieval_res.confidence_score,
+        confidence_score=confidence_score,
         passed_guardrail=True,
         provider=active_provider,
-        citations=retrieval_res.citations,
+        citations=citations,
         refusal_reason=None,
     )
-
 
 
 @router.post("/chat")

@@ -70,7 +70,7 @@ export default function ChatPage() {
 
   // Handle sending a message
   const handleSendMessage = useCallback(
-    async (queryText: string) => {
+    async (queryText: string, docIds?: string[]) => {
       if (!queryText.trim() || isLoading) return;
 
       setError(null);
@@ -135,7 +135,8 @@ export default function ChatPage() {
               });
             },
           },
-          abortController.signal
+          abortController.signal,
+          docIds
         );
       } catch (err: unknown) {
         if ((err as Error)?.name !== "AbortError") {
@@ -244,7 +245,7 @@ export default function ChatPage() {
       <CompareModal
         isOpen={isCompareOpen}
         onClose={() => setIsCompareOpen(false)}
-        onCompare={(docIds, queryText) => handleSendMessage(queryText)}
+        onCompare={(docIds, queryText) => handleSendMessage(queryText, docIds)}
       />
     </div>
   );

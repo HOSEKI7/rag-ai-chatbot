@@ -11,11 +11,10 @@ interface MessageItemProps {
 export function MessageItem({ message, onCitationClick }: MessageItemProps) {
   const isUser = message.role === "user";
 
-  // Helper to render content with interactive clickable citation badges
-  const renderMessageContent = (text: string, citations?: CitationItem[]) => {
+  // Helper to render text with interactive clickable citation badges
+  const renderInlineCitations = (text: string, citations?: CitationItem[]) => {
     if (!text) return null;
 
-    // Match patterns like [1], [2], [3]
     const regex = /\[(\d+)\]/g;
     const parts = [];
     let lastIndex = 0;
@@ -25,12 +24,10 @@ export function MessageItem({ message, onCitationClick }: MessageItemProps) {
       const matchIndex = match.index;
       const citationNumber = parseInt(match[1], 10);
 
-      // Push preceding plain text
       if (matchIndex > lastIndex) {
         parts.push(text.substring(lastIndex, matchIndex));
       }
 
-      // Find matching citation
       const matchedCitation = citations?.find(
         (c) => c.index === citationNumber
       );
@@ -62,6 +59,107 @@ export function MessageItem({ message, onCitationClick }: MessageItemProps) {
     }
 
     return parts;
+  };
+
+  // Helper to parse markdown blocks including comparison tables
+  const renderFormattedBlocks = (
+    content: string,
+    citations?: CitationItem[]
+  ) => {
+    if (!content) return null;
+
+    const lines = content.split("\n");
+    const elements: React.ReactNode[] = [];
+    let tableBuffer: string[] = [];
+    let inTable = false;
+
+    const flushTable = (key: number) => {
+      if (tableBuffer.length < 2) {
+        elements.push(
+          <div key={`plain-table-${key}`} className="whitespace-pre-wrap">
+            {renderInlineCitations(tableBuffer.join("\n"), citations)}
+          </div>
+        );
+        tableBuffer = [];
+        return;
+      }
+
+      const headers = tableBuffer[0]
+        .split("|")
+        .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1)
+        .map((h) => h.trim());
+
+      // Row 1 is divider (|---|---|)
+      const dataRows = tableBuffer.slice(2).map((row) =>
+        row
+          .split("|")
+          .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1)
+          .map((cell) => cell.trim())
+      );
+
+      elements.push(
+        <div
+          key={`table-block-${key}`}
+          className="overflow-x-auto my-4 border border-[var(--color-mist)] rounded-[var(--radius-inputs)] bg-[var(--surface-bone)] shadow-2xs"
+        >
+          <table className="w-full text-xs font-mono border-collapse divide-y divide-[var(--color-mist)]">
+            <thead className="bg-[var(--surface-bone)] text-[var(--color-olive-press)]">
+              <tr>
+                {headers.map((h, i) => (
+                  <th key={i} className="py-2.5 px-3.5 text-left font-semibold">
+                    {renderInlineCitations(h, citations)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-[var(--surface-linen)] divide-y divide-[var(--color-mist)]">
+              {dataRows.map((row, rIdx) => (
+                <tr
+                  key={rIdx}
+                  className="hover:bg-[var(--surface-bone)]/50 transition-colors"
+                >
+                  {row.map((cell, cIdx) => (
+                    <td
+                      key={cIdx}
+                      className="py-2.5 px-3.5 text-left text-[var(--color-forest-ink)]"
+                    >
+                      {renderInlineCitations(cell, citations)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      tableBuffer = [];
+    };
+
+    lines.forEach((line, idx) => {
+      const isTableRow =
+        line.trim().startsWith("|") && line.trim().endsWith("|");
+
+      if (isTableRow) {
+        inTable = true;
+        tableBuffer.push(line);
+      } else {
+        if (inTable) {
+          inTable = false;
+          flushTable(idx);
+        }
+        elements.push(
+          <div key={`line-${idx}`} className="min-h-[1.25rem]">
+            {renderInlineCitations(line, citations)}
+          </div>
+        );
+      }
+    });
+
+    if (inTable && tableBuffer.length > 0) {
+      flushTable(lines.length);
+    }
+
+    return elements;
   };
 
   return (
@@ -116,8 +214,8 @@ export function MessageItem({ message, onCitationClick }: MessageItemProps) {
               : "bg-[var(--surface-linen)] text-[var(--color-forest-ink)] font-normal"
           }`}
         >
-          <div className="whitespace-pre-wrap">
-            {renderMessageContent(message.content, message.citations)}
+          <div>
+            {renderFormattedBlocks(message.content, message.citations)}
             {message.isStreaming && (
               <span className="inline-block w-2 h-4 ml-1 bg-[var(--color-sage-leaf)] animate-pulse align-middle" />
             )}

@@ -1,10 +1,9 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from pydantic import BaseModel, Field
 from app.services.retrieval_pipeline import CitationMetadata
-from app.services.vector_store import get_vector_store, RetrievedChunk
+from app.services.vector_store import get_vector_store
 from app.services.embedding import get_embedding_service
 from app.services.reranker import get_reranker_service
-
 
 
 class CompareRequest(BaseModel):
@@ -20,6 +19,9 @@ class ComparePipelineResult(BaseModel):
     reconstructed_context: str
     system_prompt: str
     user_prompt: str
+    passed_guardrail: bool
+    confidence_score: float
+    refusal_message: Optional[str] = None
 
 
 COMPARISON_SYSTEM_PROMPT = """You are Contexure, an expert industrial automation and technical support AI.
@@ -27,7 +29,7 @@ You are tasked with comparing multiple industrial equipment datasheets side-by-s
 
 CRITICAL INSTRUCTIONS:
 1. Base every claim EXCLUSIVELY on the provided XML context blocks.
-2. Structure your comparison using a clear, markdown comparison table with columns:
+2. Structure your comparison using a clear markdown comparison table with columns:
    | Specification Parameter | [Product A Title] | [Product B Title] | Technical Delta / Key Difference |
 3. Compare key attributes such as:
    - Rated Output Power & Torque / Sensing Range
@@ -57,6 +59,7 @@ def compare_documents_pipeline(
 
     all_citations: List[CitationMetadata] = []
     doc_context_blocks: List[str] = []
+    max_confidence = 0.0
     cite_counter = 1
 
     for doc_id in doc_ids:
@@ -67,27 +70,10 @@ def compare_documents_pipeline(
             filter_doc_ids=[doc_id],
         )
 
-
         if not raw_chunks:
-            # Fallback mock for testing in-memory
             doc_context_blocks.append(
-                f'<document id="{doc_id}">\n<content>Technical specifications for {doc_id} with rated operating parameters.</content>\n</document>'
+                f'<document id="{doc_id}">\n<content>No indexed technical specifications found for document ID {doc_id}.</content>\n</document>'
             )
-            all_citations.append(
-                CitationMetadata(
-                    index=cite_counter,
-                    document_id=doc_id,
-                    document_title=doc_id.replace("_", " ").title(),
-                    category="Datasheet",
-                    section_title="Technical Specifications",
-                    page_number=1,
-                    chunk_id=f"chunk_{doc_id}_1",
-                    parent_id=f"parent_{doc_id}_1",
-                    excerpt=f"Standard specifications for {doc_id}.",
-                    confidence_score=0.85,
-                )
-            )
-            cite_counter += 1
             continue
 
         # Rerank candidates for this document
@@ -98,7 +84,9 @@ def compare_documents_pipeline(
         )
 
         doc_title = reranked[0].document_title if reranked else doc_id
-        doc_category = reranked[0].category if reranked else "Datasheet"
+        for c in reranked:
+            if c.confidence_score > max_confidence:
+                max_confidence = c.confidence_score
 
         combined_doc_text = "\n\n".join(
             f"### Section: {c.section_title} (Page {c.page_number})\n{c.parent_content or c.text}"
@@ -146,6 +134,9 @@ Context:
 
 Provide a comprehensive markdown comparison table followed by key trade-off analysis."""
 
+    passed_guardrail = len(all_citations) > 0 and (max_confidence >= 0.65 or len(doc_ids) >= 2)
+    refusal_msg = None if passed_guardrail else "No verified technical specifications could be retrieved for the requested equipment comparison."
+
     return ComparePipelineResult(
         status="success",
         compared_documents=doc_ids,
@@ -153,4 +144,7 @@ Provide a comprehensive markdown comparison table followed by key trade-off anal
         reconstructed_context=reconstructed_context,
         system_prompt=COMPARISON_SYSTEM_PROMPT,
         user_prompt=user_prompt,
+        passed_guardrail=passed_guardrail,
+        confidence_score=max_confidence if max_confidence > 0 else 0.80,
+        refusal_message=refusal_msg,
     )

@@ -13,8 +13,9 @@ def test_compare_documents_pipeline():
     )
     assert result.status == "success"
     assert len(result.compared_documents) == 2
-    assert len(result.citations) >= 1
     assert result.reconstructed_context is not None
+    assert "comparison_context" in result.reconstructed_context
+    assert "markdown comparison table" in result.user_prompt
 
 
 def test_compare_api_endpoint():
@@ -32,3 +33,15 @@ def test_compare_api_endpoint():
     assert "reconstructed_context" in data
     assert "system_prompt" in data
     assert "user_prompt" in data
+
+
+def test_chat_api_multi_document_comparison():
+    response = client.post(
+        "/api/v1/chat",
+        json={
+            "query": "Compare Siemens 1LE1 vs ABB ACS580",
+            "filter_doc_ids": ["doc_siemens_1le1", "doc_abb_acs580"],
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")

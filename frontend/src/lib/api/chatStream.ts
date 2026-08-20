@@ -17,7 +17,8 @@ export async function streamChatQuery(
   query: string,
   history: Array<Pick<ChatMessage, "role" | "content">>,
   callbacks: StreamCallbacks,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  filterDocIds?: string[]
 ): Promise<void> {
   const url =
     apiEndpoint.startsWith("http") || apiEndpoint.startsWith("/")
@@ -30,6 +31,7 @@ export async function streamChatQuery(
     body: JSON.stringify({
       query,
       history,
+      filter_doc_ids: filterDocIds,
     }),
     signal,
   });
