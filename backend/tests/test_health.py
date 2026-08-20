@@ -5,7 +5,7 @@ from app.main import app
 
 @pytest.mark.asyncio
 async def test_health_check_endpoint():
-    """Verify that the health check endpoint returns 200 and valid service metadata with connectivity."""
+    """Verify that the health check endpoint returns 200 and valid dynamic service metadata with connectivity."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -19,3 +19,7 @@ async def test_health_check_endpoint():
     assert "environment" in data
     assert "connectivity" in data
     assert data["connectivity"]["api"] == "connected"
+    assert "runtime" in data["connectivity"]
+    assert "platform" in data["connectivity"]
+    assert "vector_store" in data["connectivity"]
+    assert "llm_provider" in data["connectivity"]
