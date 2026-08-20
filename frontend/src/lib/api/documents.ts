@@ -5,6 +5,7 @@ export interface IndexedDocumentInfo {
   page_count: number;
   parent_chunk_count: number;
   child_chunk_count: number;
+  file_size?: number;
   created_at: string;
 }
 
@@ -19,10 +20,18 @@ export interface IngestResult {
   message: string;
 }
 
+export function getBackendBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.BACKEND_URL ||
+    "http://localhost:8000"
+  );
+}
+
 export async function fetchIndexedDocuments(
-  backendBaseUrl: string
+  baseUrl: string = getBackendBaseUrl()
 ): Promise<IndexedDocumentInfo[]> {
-  const url = `${backendBaseUrl.replace(/\/$/, "")}/api/v1/documents`;
+  const url = `${baseUrl.replace(/\/$/, "")}/api/v1/documents`;
   const res = await fetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -36,12 +45,12 @@ export async function fetchIndexedDocuments(
 }
 
 export async function uploadDatasheet(
-  backendBaseUrl: string,
   file: File,
   documentTitle?: string,
-  category?: string
+  category?: string,
+  baseUrl: string = getBackendBaseUrl()
 ): Promise<IngestResult> {
-  const url = `${backendBaseUrl.replace(/\/$/, "")}/api/v1/ingest`;
+  const url = `${baseUrl.replace(/\/$/, "")}/api/v1/ingest`;
   const formData = new FormData();
   formData.append("file", file);
   if (documentTitle) formData.append("document_title", documentTitle);
@@ -65,10 +74,10 @@ export async function uploadDatasheet(
 }
 
 export async function deleteIndexedDocument(
-  backendBaseUrl: string,
-  documentId: string
+  documentId: string,
+  baseUrl: string = getBackendBaseUrl()
 ): Promise<{ status: string; message: string }> {
-  const url = `${backendBaseUrl.replace(/\/$/, "")}/api/v1/documents/${documentId}`;
+  const url = `${baseUrl.replace(/\/$/, "")}/api/v1/documents/${documentId}`;
   const res = await fetch(url, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },

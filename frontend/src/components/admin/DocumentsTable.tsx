@@ -15,19 +15,15 @@ export function DocumentsTable({
   onDelete,
 }: DocumentsTableProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDocId, setConfirmDocId] = useState<string | null>(null);
 
-  const handleDelete = async (docId: string) => {
-    if (
-      confirm(
-        `Are you sure you want to purge all vector chunks for document '${docId}'?`
-      )
-    ) {
-      setDeletingId(docId);
-      try {
-        await onDelete(docId);
-      } finally {
-        setDeletingId(null);
-      }
+  const handleConfirmDelete = async (docId: string) => {
+    setDeletingId(docId);
+    try {
+      await onDelete(docId);
+      setConfirmDocId(null);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -37,7 +33,7 @@ export function DocumentsTable({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <span className="text-xs font-mono uppercase tracking-wider text-[var(--color-sage-leaf)] block mb-1">
-            VECTOR STORE REGISTRY
+            KNOWLEDGE BASE REGISTRY
           </span>
           <h2 className="text-2xl font-normal text-[var(--color-olive-press)] tracking-tight">
             Active Knowledge Base Documents
@@ -47,6 +43,32 @@ export function DocumentsTable({
           Total Indexed: <strong>{documents.length}</strong> source documents
         </span>
       </div>
+
+      {/* Inline Confirmation Alert */}
+      {confirmDocId && (
+        <div className="mb-4 p-4 rounded-[var(--radius-inputs)] bg-[var(--color-blush)] border border-[var(--color-crimson-specimen)]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono text-[var(--color-crimson-specimen)]">
+          <span>
+            Are you sure you want to permanently purge document{" "}
+            <strong>{confirmDocId}</strong> and all associated vector chunks
+            from Qdrant?
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleConfirmDelete(confirmDocId)}
+              disabled={deletingId === confirmDocId}
+              className="px-3 py-1 rounded-[var(--radius-buttons)] bg-[var(--color-crimson-specimen)] text-[var(--surface-linen)] font-medium hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-40"
+            >
+              {deletingId === confirmDocId ? "Purging..." : "Confirm Purge"}
+            </button>
+            <button
+              onClick={() => setConfirmDocId(null)}
+              className="px-3 py-1 rounded-[var(--radius-buttons)] border border-[var(--color-mist)] bg-[var(--surface-linen)] text-[var(--color-forest-ink)] font-medium hover:bg-[var(--surface-bone)] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Documents Table */}
       {isLoading ? (
@@ -68,6 +90,7 @@ export function DocumentsTable({
                 <th className="py-3 px-3 text-center">Pages</th>
                 <th className="py-3 px-3 text-center">Parent Chunks</th>
                 <th className="py-3 px-3 text-center">Child Chunks</th>
+                <th className="py-3 px-3 text-center">Indexed Date</th>
                 <th className="py-3 px-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -97,15 +120,32 @@ export function DocumentsTable({
                   <td className="py-3 px-3 text-center text-[var(--color-forest-ink)] font-semibold">
                     {doc.child_chunk_count}
                   </td>
+                  <td className="py-3 px-3 text-center text-[var(--color-sage-gray)] text-[10px]">
+                    {doc.created_at
+                      ? new Date(doc.created_at).toLocaleDateString()
+                      : "Active"}
+                  </td>
                   <td className="py-3 px-3 text-right">
                     <button
-                      onClick={() => handleDelete(doc.document_id)}
+                      onClick={() => setConfirmDocId(doc.document_id)}
                       disabled={deletingId === doc.document_id}
-                      className="px-2.5 py-1 rounded-[var(--radius-buttons)] border border-[var(--color-lichen)] text-[var(--color-crimson-specimen)] hover:border-[var(--color-crimson-specimen)] hover:bg-[var(--color-blush)]/40 transition-all cursor-pointer text-[10px] disabled:opacity-40"
+                      className="px-2.5 py-1 rounded-[var(--radius-buttons)] border border-[var(--color-lichen)] text-[var(--color-crimson-specimen)] hover:border-[var(--color-crimson-specimen)] hover:bg-[var(--color-blush)]/40 transition-all cursor-pointer text-[10px] font-medium disabled:opacity-40 flex items-center gap-1 ml-auto"
+                      aria-label={`Purge ${doc.document_title}`}
                     >
-                      {deletingId === doc.document_id
-                        ? "Purging..."
-                        : "Purge 🗑"}
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                      <span>Purge</span>
                     </button>
                   </td>
                 </tr>

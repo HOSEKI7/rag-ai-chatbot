@@ -35,8 +35,6 @@ export function DocumentUploadZone({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const backendUrl =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -47,7 +45,6 @@ export function DocumentUploadZone({
     setFile(selectedFile);
     setError(null);
     if (!title) {
-      // Auto-populate clean title from filename
       const cleanName = selectedFile.name
         .replace(/\.pdf$/i, "")
         .replace(/[_-]/g, " ");
@@ -72,7 +69,6 @@ export function DocumentUploadZone({
     setSuccessResult(null);
     setCurrentStage(0);
 
-    // Simulated progress stage ticker for visual feedback
     const stageInterval = setInterval(() => {
       setCurrentStage((prev) =>
         prev < INGESTION_STAGES.length - 1 ? prev + 1 : prev
@@ -80,12 +76,11 @@ export function DocumentUploadZone({
     }, 650);
 
     try {
-      const result = await uploadDatasheet(backendUrl, file, title, category);
+      const result = await uploadDatasheet(file, title, category);
       clearInterval(stageInterval);
       setCurrentStage(INGESTION_STAGES.length - 1);
       setSuccessResult(result);
       onIngestSuccess(result);
-      // Reset form
       setFile(null);
       setTitle("");
     } catch (err: unknown) {
@@ -139,9 +134,21 @@ export function DocumentUploadZone({
           />
 
           <div className="flex flex-col items-center justify-center space-y-2">
-            <span className="w-8 h-8 rounded-full bg-[var(--surface-bone)] border border-[var(--color-mist)] flex items-center justify-center text-sm">
-              📄
-            </span>
+            <div className="w-8 h-8 rounded-full bg-[var(--surface-bone)] border border-[var(--color-mist)] flex items-center justify-center text-[var(--color-sage-gray)]">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+            </div>
             <span className="text-sm font-medium text-[var(--color-forest-ink)]">
               {file ? file.name : "Drag & drop industrial PDF datasheet here"}
             </span>
@@ -239,7 +246,7 @@ export function DocumentUploadZone({
           <button
             type="submit"
             disabled={!file || isUploading}
-            className="px-6 py-2.5 rounded-[var(--radius-buttons)] bg-[var(--color-forest-ink)] text-[var(--surface-linen)] text-xs font-mono font-medium hover:bg-[var(--color-olive-press)] transition-colors disabled:opacity-40 cursor-pointer"
+            className="px-6 py-2.5 rounded-[var(--radius-buttons)] bg-[var(--color-forest-ink)] text-[var(--surface-linen)] text-xs font-medium hover:bg-[var(--color-olive-press)] transition-colors disabled:opacity-40 cursor-pointer"
           >
             {isUploading ? "Processing Pipeline..." : "Ingest Document →"}
           </button>
