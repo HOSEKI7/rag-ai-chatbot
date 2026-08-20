@@ -1,6 +1,6 @@
 import json
 import time
-from typing import List, Optional, AsyncGenerator, Dict, Any
+from typing import List, Optional, AsyncGenerator
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -9,15 +9,10 @@ from app.services.retrieval_pipeline import (
     PipelineRetrievalResult,
     CitationMetadata,
 )
-from app.services.prompt_builder import build_rag_prompt
+from app.services.prompt_builder import build_rag_prompt, ChatMessage
 from app.services.llm_provider import get_llm_provider, StreamToken
 
 router = APIRouter()
-
-
-class ChatMessage(BaseModel):
-    role: str = Field(..., description="Role: 'user' or 'assistant'")
-    content: str = Field(..., description="Message text content")
 
 
 class ChatRequest(BaseModel):
@@ -32,7 +27,7 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
     """
     Asynchronous Server-Sent Events (SSE) streaming generator:
     1. Executes hybrid retrieval and confidence guardrail.
-    2. Emits metadata SSE payload with citations and confidence score.
+    2. Emits metadata SSE payload with citations, excerpt, and confidence score.
     3. If guardrail fails, streams deterministic refusal response.
     4. If guardrail passes, streams grounded LLM tokens with automatic provider fallback.
     5. Emits completion event with execution metrics.
@@ -63,7 +58,13 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
             retrieval_res.refusal_message
             or "The query could not be verified against the indexed industrial datasheets."
         )
-        yield f"data: {json.dumps({'type': 'token', 'content': refusal_text})}\n\n"
+        refusal_token_event = {
+            "type": "token",
+            "token": refusal_text,
+            "content": refusal_text,
+            "provider": "guardrail_refusal",
+        }
+        yield f"data: {json.dumps(refusal_token_event)}\n\n"
         
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
         done_event = {
@@ -75,11 +76,10 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
         return
 
     # 4. Grounded Prompt Building
-    history_dicts = [h.model_dump() for h in request.history] if request.history else None
     system_prompt, user_prompt = build_rag_prompt(
         query=request.query,
         reconstructed_context=retrieval_res.reconstructed_context,
-        history=history_dicts,
+        history=request.history,
     )
 
     # 5. Stream LLM Tokens with Automatic Fallback
@@ -94,6 +94,7 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
             active_provider = stream_token.provider
             token_event = {
                 "type": "token",
+                "token": stream_token.token,
                 "content": stream_token.token,
                 "provider": stream_token.provider,
             }
@@ -117,6 +118,7 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
 
 
 @router.post("/chat")
+@router.post("/query")
 async def chat_endpoint(request: ChatRequest) -> StreamingResponse:
     """
     Streaming chat endpoint emitting Server-Sent Events (SSE) with grounded citations.
@@ -130,9 +132,3 @@ async def chat_endpoint(request: ChatRequest) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
-
-
-@router.post("/query")
-async def query_endpoint_alias(request: ChatRequest) -> StreamingResponse:
-    """Spec-compliant alias for /chat endpoint."""
-    return await chat_endpoint(request)

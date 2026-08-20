@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, Callable, Any, Dict
 import httpx
 from pydantic import BaseModel
 from app.core.config import settings
@@ -11,6 +11,40 @@ logger = logging.getLogger(__name__)
 class StreamToken(BaseModel):
     token: str
     provider: str
+
+
+async def _parse_sse_lines(
+    client: httpx.AsyncClient,
+    url: str,
+    headers: Dict[str, str],
+    payload: Dict[str, Any],
+    extract_token_fn: Callable[[Dict[str, Any]], Optional[str]],
+    provider_name: str,
+) -> AsyncGenerator[StreamToken, None]:
+    """Reusable helper for streaming and parsing Server-Sent Events (SSE) from REST APIs."""
+    async with client.stream("POST", url, json=payload, headers=headers) as response:
+        if response.status_code != 200:
+            err_body = await response.aread()
+            raise RuntimeError(
+                f"{provider_name} API returned status {response.status_code}: {err_body.decode('utf-8')}"
+            )
+
+        async for line in response.aiter_lines():
+            line = line.strip()
+            if not line or not line.startswith("data: "):
+                continue
+
+            data_str = line[len("data: "):].strip()
+            if data_str == "[DONE]":
+                break
+
+            try:
+                data = json.loads(data_str)
+                token = extract_token_fn(data)
+                if token:
+                    yield StreamToken(token=token, provider=provider_name)
+            except json.JSONDecodeError:
+                continue
 
 
 class LLMProviderService:
@@ -39,27 +73,31 @@ class LLMProviderService:
         user_prompt: str,
     ) -> AsyncGenerator[StreamToken, None]:
         """
-        Streams generated answer tokens. Tries Gemini primary first; seamlessly fails over to Groq.
+        Streams generated answer tokens. Tries Gemini primary first; seamlessly fails over to Groq
+        if Gemini encounters rate limits or errors prior to yielding tokens.
         """
+        has_yielded = False
         gemini_error: Optional[Exception] = None
 
         # 1. Try Primary Provider: Google Gemini
         if self.gemini_api_key:
             try:
-                has_yielded = False
                 async for token_item in self._stream_gemini(system_prompt, user_prompt):
                     has_yielded = True
                     yield token_item
                 if has_yielded:
                     return
             except Exception as e:
-                logger.warning(f"Primary provider (Gemini) failed: {e}. Attempting fallback to Groq...")
                 gemini_error = e
+                # Only attempt fallback if no tokens were emitted to prevent duplicate content
+                if has_yielded:
+                    logger.error(f"Gemini failed mid-stream after emitting tokens: {e}")
+                    raise
+                logger.warning(f"Primary provider (Gemini) failed: {e}. Attempting fallback to Groq...")
 
         # 2. Try Fallback Provider: Groq Cloud Llama 3.3 70B
-        if self.groq_api_key:
+        if self.groq_api_key and not has_yielded:
             try:
-                has_yielded = False
                 async for token_item in self._stream_groq(system_prompt, user_prompt):
                     has_yielded = True
                     yield token_item
@@ -68,14 +106,14 @@ class LLMProviderService:
             except Exception as e:
                 logger.error(f"Fallback provider (Groq) failed: {e}")
 
-        # 3. Development / Test Fallback
+        # 3. Development / Offline Fallback
         if not self.gemini_api_key and not self.groq_api_key:
             async for token_item in self._stream_local_dev(user_prompt):
                 yield token_item
             return
 
-        # If keys were present but both failed
-        raise RuntimeError(f"All LLM generation providers failed. Gemini: {gemini_error}")
+        if not has_yielded:
+            raise RuntimeError(f"All LLM generation providers failed. Gemini: {gemini_error}")
 
     async def _stream_gemini(
         self,
@@ -87,46 +125,32 @@ class LLMProviderService:
             f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:streamGenerateContent"
             f"?key={self.gemini_api_key}&alt=sse"
         )
-
         payload = {
-            "contents": [
-                {"role": "user", "parts": [{"text": user_prompt}]}
-            ],
-            "system_instruction": {
-                "parts": [{"text": system_prompt}]
-            },
-            "generation_config": {
-                "temperature": 0.2,
-                "max_output_tokens": 2048,
-            },
+            "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+            "system_instruction": {"parts": [{"text": system_prompt}]},
+            "generation_config": {"temperature": 0.2, "max_output_tokens": 2048},
         }
 
+        def _extract_gemini_token(data: Dict[str, Any]) -> Optional[str]:
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                for part in parts:
+                    txt = part.get("text")
+                    if txt:
+                        return txt
+            return None
+
         async with httpx.AsyncClient(timeout=45.0) as client:
-            async with client.stream("POST", url, json=payload) as response:
-                if response.status_code != 200:
-                    err_body = await response.aread()
-                    raise RuntimeError(f"Gemini API returned status {response.status_code}: {err_body.decode('utf-8')}")
-
-                async for line in response.aiter_lines():
-                    line = line.strip()
-                    if not line or not line.startswith("data: "):
-                        continue
-
-                    json_str = line[len("data: "):].strip()
-                    if not json_str:
-                        continue
-
-                    try:
-                        data = json.loads(json_str)
-                        candidates = data.get("candidates", [])
-                        if candidates:
-                            parts = candidates[0].get("content", {}).get("parts", [])
-                            for part in parts:
-                                text_piece = part.get("text", "")
-                                if text_piece:
-                                    yield StreamToken(token=text_piece, provider="gemini")
-                    except json.JSONDecodeError:
-                        continue
+            async for token in _parse_sse_lines(
+                client=client,
+                url=url,
+                headers={},
+                payload=payload,
+                extract_token_fn=_extract_gemini_token,
+                provider_name="gemini",
+            ):
+                yield token
 
     async def _stream_groq(
         self,
@@ -139,7 +163,6 @@ class LLMProviderService:
             "Authorization": f"Bearer {self.groq_api_key}",
             "Content-Type": "application/json",
         }
-
         payload = {
             "model": self.groq_model,
             "messages": [
@@ -151,31 +174,22 @@ class LLMProviderService:
             "stream": True,
         }
 
+        def _extract_groq_token(data: Dict[str, Any]) -> Optional[str]:
+            choices = data.get("choices", [])
+            if choices:
+                return choices[0].get("delta", {}).get("content")
+            return None
+
         async with httpx.AsyncClient(timeout=45.0) as client:
-            async with client.stream("POST", url, json=payload, headers=headers) as response:
-                if response.status_code != 200:
-                    err_body = await response.aread()
-                    raise RuntimeError(f"Groq API returned status {response.status_code}: {err_body.decode('utf-8')}")
-
-                async for line in response.aiter_lines():
-                    line = line.strip()
-                    if not line or not line.startswith("data: "):
-                        continue
-
-                    data_str = line[len("data: "):].strip()
-                    if data_str == "[DONE]":
-                        break
-
-                    try:
-                        data = json.loads(data_str)
-                        choices = data.get("choices", [])
-                        if choices:
-                            delta = choices[0].get("delta", {})
-                            content = delta.get("content", "")
-                            if content:
-                                yield StreamToken(token=content, provider="groq_fallback")
-                    except json.JSONDecodeError:
-                        continue
+            async for token in _parse_sse_lines(
+                client=client,
+                url=url,
+                headers=headers,
+                payload=payload,
+                extract_token_fn=_extract_groq_token,
+                provider_name="groq_fallback",
+            ):
+                yield token
 
     async def _stream_local_dev(self, user_prompt: str) -> AsyncGenerator[StreamToken, None]:
         """Synthetic local generator for testing and offline development."""

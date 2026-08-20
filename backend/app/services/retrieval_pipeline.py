@@ -15,6 +15,8 @@ class CitationMetadata(BaseModel):
     page_number: int
     chunk_id: str
     parent_id: str
+    excerpt: str
+    confidence_score: float
 
 
 class PipelineRetrievalResult(BaseModel):
@@ -31,7 +33,7 @@ def _assemble_deduplicated_context(
 ) -> Tuple[str, List[CitationMetadata]]:
     """
     Deduplicates parent chunk contexts across top-ranked chunks and generates
-    sequential, 1-to-1 matching citation headers.
+    sequential, 1-to-1 matching citation headers with excerpt metadata.
     """
     citations: List[CitationMetadata] = []
     context_blocks: List[str] = []
@@ -44,6 +46,10 @@ def _assemble_deduplicated_context(
 
         seen_parents.add(chunk.parent_id)
 
+        # Create concise excerpt for citation card
+        clean_text = chunk.text.split("\n", 1)[-1].strip() if "\n" in chunk.text else chunk.text
+        excerpt = clean_text[:180] + ("..." if len(clean_text) > 180 else "")
+
         citations.append(
             CitationMetadata(
                 index=citation_idx,
@@ -54,6 +60,8 @@ def _assemble_deduplicated_context(
                 page_number=chunk.page_number,
                 chunk_id=chunk.id,
                 parent_id=chunk.parent_id,
+                excerpt=excerpt,
+                confidence_score=chunk.confidence_score,
             )
         )
 
