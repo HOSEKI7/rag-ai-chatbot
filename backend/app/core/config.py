@@ -16,9 +16,13 @@ class Settings(BaseSettings):
         "https://*.vercel.app",
     ]
 
-    # External APIs (Optional defaults for scaffolding)
+    # External APIs
     GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
     GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+
+    # Vector DB
     QDRANT_URL: str = ""
     QDRANT_API_KEY: str = ""
     QDRANT_COLLECTION: str = "industrial_datasheets"
