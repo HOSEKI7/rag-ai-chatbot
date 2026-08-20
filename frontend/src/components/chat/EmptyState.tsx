@@ -46,7 +46,8 @@ export function EmptyState({ onSelectQuery }: EmptyStateProps) {
         </span>
       </div>
 
-      <h2 className="font-serif text-3xl sm:text-4xl font-light text-[var(--color-olive-press)] tracking-tight mb-4">
+      {/* Main Workspace Heading (Akkurat Sans) */}
+      <h2 className="text-3xl sm:text-4xl font-medium text-[var(--color-olive-press)] tracking-tight mb-4">
         Interactive Technical Support Workspace
       </h2>
 

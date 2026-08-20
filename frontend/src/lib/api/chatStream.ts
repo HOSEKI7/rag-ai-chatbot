@@ -1,4 +1,4 @@
-import { CitationItem } from "@/types/chat";
+import { CitationItem, ChatMessage } from "@/types/chat";
 
 export interface StreamCallbacks {
   onMetadata?: (meta: {
@@ -13,13 +13,16 @@ export interface StreamCallbacks {
 }
 
 export async function streamChatQuery(
-  backendBaseUrl: string,
+  apiEndpoint: string,
   query: string,
-  history: Array<{ role: string; content: string }>,
+  history: Array<Pick<ChatMessage, "role" | "content">>,
   callbacks: StreamCallbacks,
   signal?: AbortSignal
 ): Promise<void> {
-  const url = `${backendBaseUrl.replace(/\/$/, "")}/api/v1/chat`;
+  const url =
+    apiEndpoint.startsWith("http") || apiEndpoint.startsWith("/")
+      ? apiEndpoint
+      : `/api/chat`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -83,7 +86,7 @@ export async function streamChatQuery(
           });
         }
       } catch {
-        // Skip malformed JSON chunk
+        // Skip malformed chunk
       }
     }
   }

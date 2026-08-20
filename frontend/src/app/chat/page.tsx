@@ -22,8 +22,15 @@ export default function ChatPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const backendUrl =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+  // Helper to update specific assistant message fields cleanly
+  const updateAssistantMessage = useCallback(
+    (messageId: string, updates: Partial<ChatMessage>) => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, ...updates } : msg))
+      );
+    },
+    []
+  );
 
   // Load conversation history from localStorage
   useEffect(() => {
@@ -33,7 +40,7 @@ export default function ChatPage() {
         setMessages(JSON.parse(saved));
       }
     } catch {
-      // Ignore parse error
+      // Ignore storage read error
     }
   }, []);
 
@@ -46,7 +53,7 @@ export default function ChatPage() {
         localStorage.removeItem(STORAGE_KEY);
       }
     } catch {
-      // Ignore storage error
+      // Ignore storage write error
     }
   }, [messages]);
 
@@ -90,24 +97,17 @@ export default function ChatPage() {
 
       try {
         await streamChatQuery(
-          backendUrl,
+          "/api/chat",
           queryText,
           updatedHistory.map((m) => ({ role: m.role, content: m.content })),
           {
             onMetadata: (meta) => {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMsgId
-                    ? {
-                        ...msg,
-                        passed_guardrail: meta.passed_guardrail,
-                        confidence_score: meta.confidence_score,
-                        citations: meta.citations,
-                        refusal_message: meta.refusal_message,
-                      }
-                    : msg
-                )
-              );
+              updateAssistantMessage(assistantMsgId, {
+                passed_guardrail: meta.passed_guardrail,
+                confidence_score: meta.confidence_score,
+                citations: meta.citations,
+                refusal_message: meta.refusal_message,
+              });
             },
             onToken: (token, provider) => {
               setMessages((prev) =>
@@ -126,18 +126,11 @@ export default function ChatPage() {
               setError(err);
             },
             onDone: (metrics) => {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMsgId
-                    ? {
-                        ...msg,
-                        isStreaming: false,
-                        provider: metrics.provider,
-                        latency_ms: metrics.latency_ms,
-                      }
-                    : msg
-                )
-              );
+              updateAssistantMessage(assistantMsgId, {
+                isStreaming: false,
+                provider: metrics.provider,
+                latency_ms: metrics.latency_ms,
+              });
             },
           },
           abortController.signal
@@ -148,44 +141,20 @@ export default function ChatPage() {
             (err as Error)?.message || "Failed to communicate with RAG engine.";
           setError(errMsg);
 
-          // Simulated offline fallback response for development
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMsgId
-                ? {
-                    ...msg,
-                    isStreaming: false,
-                    content:
-                      "Based on the verified technical documentation [1], the specified equipment operating parameters are verified.",
-                    citations: [
-                      {
-                        index: 1,
-                        document_id: "doc-siemens-1le1",
-                        document_title: "Siemens 1LE1 AC Induction Motor",
-                        category: "Motor",
-                        section_title: "Technical Specifications",
-                        page_number: 2,
-                        chunk_id: "c-001",
-                        parent_id: "p-001",
-                        excerpt:
-                          "The Siemens 1LE1 AC induction motor delivers 15 kW rated output power with 97 Nm rated torque at 1475 RPM.",
-                        confidence_score: 0.89,
-                      },
-                    ],
-                    passed_guardrail: true,
-                    confidence_score: 0.89,
-                    provider: "offline_mock",
-                  }
-                : msg
-            )
-          );
+          updateAssistantMessage(assistantMsgId, {
+            isStreaming: false,
+            content: `Communication error: ${errMsg}`,
+            passed_guardrail: false,
+            refusal_message:
+              "Connection to backend service could not be established.",
+          });
         }
       } finally {
         setIsLoading(false);
         abortControllerRef.current = null;
       }
     },
-    [backendUrl, isLoading, messages]
+    [isLoading, messages, updateAssistantMessage]
   );
 
   // Check URL query parameters for pre-populated questions on mount

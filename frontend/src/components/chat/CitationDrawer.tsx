@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { CitationItem } from "@/types/chat";
 
 interface CitationDrawerProps {
@@ -49,7 +50,7 @@ export function CitationDrawer({ citation, onClose }: CitationDrawerProps) {
               <>
                 <span>·</span>
                 <span className="text-[var(--color-forest-ink)]">
-                  Relevance:{" "}
+                  Confidence Score:{" "}
                   <strong>
                     {(citation.confidence_score * 100).toFixed(1)}%
                   </strong>
@@ -73,17 +74,15 @@ export function CitationDrawer({ citation, onClose }: CitationDrawerProps) {
         {/* Action Button */}
         <div className="flex items-center justify-between pt-2 border-t border-[var(--color-mist)] text-xs font-mono">
           <span className="text-[var(--color-sage-mist)]">
-            Document ID: {citation.document_id}
+            ID: {citation.document_id}
           </span>
-          <button
-            onClick={() => {
-              // Simulated raw source PDF preview
-              window.open(`#`, "_blank");
-            }}
+          <Link
+            href={`/#datasheets`}
+            onClick={onClose}
             className="px-3 py-1.5 rounded-[var(--radius-buttons)] bg-[var(--color-forest-ink)] text-[var(--surface-linen)] hover:bg-[var(--color-olive-press)] transition-colors cursor-pointer"
           >
-            Preview Source PDF ↗
-          </button>
+            View Datasheets ↗
+          </Link>
         </div>
       </div>
     </div>

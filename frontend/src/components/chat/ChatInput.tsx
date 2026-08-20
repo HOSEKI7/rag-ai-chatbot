@@ -59,9 +59,9 @@ export function ChatInput({ onSend, isLoading, onStop }: ChatInputProps) {
           <button
             type="button"
             onClick={onStop}
-            className="px-4 py-1.5 rounded-[var(--radius-buttons)] bg-[var(--color-crimson-specimen)] text-[var(--surface-linen)] font-medium hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
+            className="px-4 py-1.5 rounded-[var(--radius-buttons)] border border-[var(--color-lichen)] bg-[var(--surface-linen)] text-[var(--color-olive-press)] font-medium hover:border-[var(--color-forest-ink)] transition-colors cursor-pointer flex items-center gap-1.5"
           >
-            <span className="w-2 h-2 rounded-xs bg-[var(--surface-linen)]" />
+            <span className="w-2 h-2 rounded-xs bg-[var(--color-olive-press)]" />
             <span>Stop</span>
           </button>
         ) : (
