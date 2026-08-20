@@ -10,6 +10,8 @@ import { AuthGate } from "@/components/admin/AuthGate";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { MetricsKpiGrid } from "@/components/admin/analytics/MetricsKpiGrid";
 import { ProviderDistributionCard } from "@/components/admin/analytics/ProviderDistributionCard";
+import { ConfidenceDistributionCard } from "@/components/admin/analytics/ConfidenceDistributionCard";
+import { TopDocumentsLeaderboard } from "@/components/admin/analytics/TopDocumentsLeaderboard";
 import { RejectedQueriesTable } from "@/components/admin/analytics/RejectedQueriesTable";
 import { RecentTracesTable } from "@/components/admin/analytics/RecentTracesTable";
 
@@ -54,7 +56,7 @@ export default function ObservabilityDashboardPage() {
               <h1 className="text-3xl font-medium text-[var(--color-olive-press)] tracking-tight">
                 RAG Telemetry & Analytics
               </h1>
-              <p className="text-xs font-mono text-[var(--color-sage-gray)] mt-1">
+              <p className="text-xs text-[var(--color-sage-gray)] mt-1 font-sans">
                 Real-time query volume, cross-encoder confidence distributions,
                 and provider fallback telemetry.
               </p>
@@ -97,16 +99,29 @@ export default function ObservabilityDashboardPage() {
               {/* Top KPI Grid */}
               <MetricsKpiGrid metrics={metrics} />
 
-              {/* Provider Distribution Telemetry */}
-              <ProviderDistributionCard
-                distribution={metrics.provider_distribution}
-                totalQueries={metrics.total_queries}
-              />
+              {/* Provider Distribution Telemetry & Confidence Histogram */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ProviderDistributionCard
+                  distribution={metrics.provider_distribution}
+                  providerMetrics={metrics.provider_metrics}
+                  totalQueries={metrics.total_queries}
+                />
 
-              {/* Knowledge Gap Triage Table */}
-              <RejectedQueriesTable
-                rejectedQueries={metrics.rejected_queries}
-              />
+                <ConfidenceDistributionCard
+                  distribution={metrics.confidence_distribution}
+                  totalQueries={metrics.total_queries}
+                />
+              </div>
+
+              {/* Top Retrieved Documents & Knowledge Gap Triage */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <TopDocumentsLeaderboard
+                  topDocuments={metrics.top_retrieved_documents}
+                />
+                <RejectedQueriesTable
+                  rejectedQueries={metrics.rejected_queries}
+                />
+              </div>
 
               {/* Recent Traces Table */}
               <RecentTracesTable traces={metrics.recent_traces} />

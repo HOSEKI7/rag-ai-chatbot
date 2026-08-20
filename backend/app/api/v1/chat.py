@@ -25,6 +25,35 @@ class ChatRequest(BaseModel):
     confidence_threshold: Optional[float] = Field(None, ge=0.0, le=1.0, description="Minimum confidence score cutoff")
 
 
+def _record_telemetry(
+    query: str,
+    latency_ms: float,
+    retrieval_latency_ms: float,
+    generation_latency_ms: float,
+    confidence_score: float,
+    passed_guardrail: bool,
+    provider: str,
+    citations: list,
+    refusal_reason: Optional[str] = None,
+) -> None:
+    try:
+        get_analytics_service().record_trace(
+            QueryTrace(
+                query=query,
+                latency_ms=latency_ms,
+                retrieval_latency_ms=retrieval_latency_ms,
+                generation_latency_ms=generation_latency_ms,
+                confidence_score=confidence_score,
+                passed_guardrail=passed_guardrail,
+                provider=provider,
+                retrieved_documents=[c.document_id for c in citations],
+                refusal_reason=refusal_reason,
+            )
+        )
+    except Exception:
+        pass
+
+
 async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
     """
     Asynchronous Server-Sent Events (SSE) streaming generator:
@@ -76,23 +105,17 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
         }
         yield f"data: {json.dumps(done_event)}\n\n"
 
-        # Record analytics trace for refusal
-        try:
-            get_analytics_service().record_trace(
-                QueryTrace(
-                    query=request.query,
-                    latency_ms=elapsed_ms,
-                    retrieval_latency_ms=elapsed_ms,
-                    generation_latency_ms=0.0,
-                    confidence_score=retrieval_res.confidence_score,
-                    passed_guardrail=False,
-                    provider="guardrail_refusal",
-                    retrieved_documents=[c.document_id for c in retrieval_res.citations],
-                    refusal_reason=retrieval_res.refusal_message,
-                )
-            )
-        except Exception:
-            pass
+        _record_telemetry(
+            query=request.query,
+            latency_ms=elapsed_ms,
+            retrieval_latency_ms=elapsed_ms,
+            generation_latency_ms=0.0,
+            confidence_score=retrieval_res.confidence_score,
+            passed_guardrail=False,
+            provider="guardrail_refusal",
+            citations=retrieval_res.citations,
+            refusal_reason=retrieval_res.refusal_message,
+        )
         return
 
     # 4. Grounded Prompt Building
@@ -139,22 +162,18 @@ async def chat_sse_generator(request: ChatRequest) -> AsyncGenerator[str, None]:
     }
     yield f"data: {json.dumps(done_event)}\n\n"
 
-    try:
-        get_analytics_service().record_trace(
-            QueryTrace(
-                query=request.query,
-                latency_ms=elapsed_ms,
-                retrieval_latency_ms=retrieval_elapsed_ms,
-                generation_latency_ms=gen_elapsed_ms,
-                confidence_score=retrieval_res.confidence_score,
-                passed_guardrail=True,
-                provider=active_provider,
-                retrieved_documents=[c.document_id for c in retrieval_res.citations],
-                refusal_reason=None,
-            )
-        )
-    except Exception:
-        pass
+    _record_telemetry(
+        query=request.query,
+        latency_ms=elapsed_ms,
+        retrieval_latency_ms=retrieval_elapsed_ms,
+        generation_latency_ms=gen_elapsed_ms,
+        confidence_score=retrieval_res.confidence_score,
+        passed_guardrail=True,
+        provider=active_provider,
+        citations=retrieval_res.citations,
+        refusal_reason=None,
+    )
+
 
 
 @router.post("/chat")

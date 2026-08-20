@@ -1,12 +1,16 @@
 "use client";
 
+import { ProviderMetricItem } from "@/lib/api/analytics";
+
 interface ProviderDistributionCardProps {
   distribution: Record<string, number>;
+  providerMetrics?: Record<string, ProviderMetricItem>;
   totalQueries: number;
 }
 
 export function ProviderDistributionCard({
   distribution,
+  providerMetrics = {},
   totalQueries,
 }: ProviderDistributionCardProps) {
   const geminiCount =
@@ -16,12 +20,20 @@ export function ProviderDistributionCard({
   const refusalCount =
     distribution["guardrail_refusal"] || distribution["refusal"] || 0;
 
+  const totalGenQueries = geminiCount + groqCount;
   const geminiPct =
-    totalQueries > 0 ? Math.round((geminiCount / totalQueries) * 100) : 0;
+    totalGenQueries > 0 ? Math.round((geminiCount / totalGenQueries) * 100) : 0;
   const groqPct =
-    totalQueries > 0 ? Math.round((groqCount / totalQueries) * 100) : 0;
-  const refusalPct =
-    totalQueries > 0 ? Math.round((refusalCount / totalQueries) * 100) : 0;
+    totalGenQueries > 0 ? Math.round((groqCount / totalGenQueries) * 100) : 0;
+
+  const geminiLatency =
+    providerMetrics["gemini"]?.average_latency_ms ||
+    providerMetrics["gemini-2.5-flash"]?.average_latency_ms ||
+    0;
+  const groqLatency =
+    providerMetrics["groq"]?.average_latency_ms ||
+    providerMetrics["llama-3.3-70b-versatile"]?.average_latency_ms ||
+    0;
 
   return (
     <div className="bg-[var(--surface-bone)] border border-[var(--color-mist)] rounded-[var(--radius-cards)] p-6 space-y-4">
@@ -30,8 +42,12 @@ export function ProviderDistributionCard({
           PROVIDER TELEMETRY
         </span>
         <h3 className="text-lg font-medium text-[var(--color-olive-press)]">
-          LLM Generation & Fallback Distribution
+          LLM Primary vs. Fallback Invocation & Latency
         </h3>
+        <p className="text-xs text-[var(--color-sage-gray)] mt-1 font-sans">
+          Invocation distribution and average end-to-end response time between
+          primary Gemini 2.5 Flash and automatic Groq fallback.
+        </p>
       </div>
 
       {/* Progress Bar */}
@@ -46,32 +62,46 @@ export function ProviderDistributionCard({
           className="bg-[var(--color-sage-leaf)] h-full transition-all"
           title={`Groq Fallback: ${groqCount} (${groqPct}%)`}
         />
-        <div
-          style={{ width: `${refusalPct}%` }}
-          className="bg-[var(--color-crimson-specimen)] h-full transition-all"
-          title={`Refusals: ${refusalCount} (${refusalPct}%)`}
-        />
       </div>
 
-      {/* Legend */}
+      {/* Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono pt-1">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-forest-ink)]" />
-          <span className="text-[var(--color-forest-ink)]">
-            Gemini 2.5 Flash: <strong>{geminiCount}</strong> ({geminiPct}%)
+        <div className="p-3 rounded-[var(--radius-inputs)] bg-[var(--surface-linen)] border border-[var(--color-mist)] space-y-1">
+          <div className="flex items-center gap-1.5 font-semibold text-[var(--color-forest-ink)]">
+            <span className="w-2 h-2 rounded-full bg-[var(--color-forest-ink)]" />
+            <span>Gemini 2.5 Flash (Primary)</span>
+          </div>
+          <div className="text-sm font-bold text-[var(--color-forest-ink)]">
+            {geminiCount} queries ({geminiPct}%)
+          </div>
+          <span className="text-[10px] text-[var(--color-sage-gray)] block">
+            Avg Latency: {geminiLatency > 0 ? `${geminiLatency}ms` : "Active"}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-sage-leaf)]" />
-          <span className="text-[var(--color-olive-press)]">
-            Groq Llama 3.3: <strong>{groqCount}</strong> ({groqPct}%)
+
+        <div className="p-3 rounded-[var(--radius-inputs)] bg-[var(--surface-linen)] border border-[var(--color-mist)] space-y-1">
+          <div className="flex items-center gap-1.5 font-semibold text-[var(--color-olive-press)]">
+            <span className="w-2 h-2 rounded-full bg-[var(--color-sage-leaf)]" />
+            <span>Groq Llama 3.3 (Fallback)</span>
+          </div>
+          <div className="text-sm font-bold text-[var(--color-olive-press)]">
+            {groqCount} queries ({groqPct}%)
+          </div>
+          <span className="text-[10px] text-[var(--color-sage-gray)] block">
+            Avg Latency: {groqLatency > 0 ? `${groqLatency}ms` : "Standby"}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-crimson-specimen)]" />
-          <span className="text-[var(--color-crimson-specimen)]">
-            Refusals (&theta; &lt; 0.65): <strong>{refusalCount}</strong> (
-            {refusalPct}%)
+
+        <div className="p-3 rounded-[var(--radius-inputs)] bg-[var(--surface-linen)] border border-[var(--color-mist)] space-y-1">
+          <div className="flex items-center gap-1.5 font-semibold text-[var(--color-crimson-specimen)]">
+            <span className="w-2 h-2 rounded-full bg-[var(--color-crimson-specimen)]" />
+            <span>Guardrail Refusals</span>
+          </div>
+          <div className="text-sm font-bold text-[var(--color-crimson-specimen)]">
+            {refusalCount} rejected queries
+          </div>
+          <span className="text-[10px] text-[var(--color-sage-gray)] block">
+            Zero LLM tokens billed
           </span>
         </div>
       </div>

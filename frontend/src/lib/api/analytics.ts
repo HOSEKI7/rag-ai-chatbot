@@ -14,6 +14,18 @@ export interface QueryTraceItem {
   refusal_reason?: string | null;
 }
 
+export interface ConfidenceBucketItem {
+  label: string;
+  range_min: number;
+  range_max: number;
+  count: number;
+}
+
+export interface ProviderMetricItem {
+  invocation_count: number;
+  average_latency_ms: number;
+}
+
 export interface AggregatedAnalytics {
   total_queries: number;
   successful_queries: number;
@@ -24,6 +36,8 @@ export interface AggregatedAnalytics {
   average_retrieval_latency_ms: number;
   average_generation_latency_ms: number;
   provider_distribution: Record<string, number>;
+  provider_metrics?: Record<string, ProviderMetricItem>;
+  confidence_distribution?: ConfidenceBucketItem[];
   top_retrieved_documents: Array<{ document_id: string; count: number }>;
   recent_traces: QueryTraceItem[];
   rejected_queries: QueryTraceItem[];

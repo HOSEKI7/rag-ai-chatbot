@@ -19,6 +19,36 @@ describe("Observability & RAG Analytics Dashboard UI", () => {
       average_retrieval_latency_ms: 110.4,
       average_generation_latency_ms: 274.8,
       provider_distribution: { gemini: 30, groq: 8, guardrail_refusal: 4 },
+      provider_metrics: {
+        gemini: { invocation_count: 30, average_latency_ms: 360.0 },
+        groq: { invocation_count: 8, average_latency_ms: 420.0 },
+      },
+      confidence_distribution: [
+        {
+          label: "< 0.65 (Refusal)",
+          range_min: 0.0,
+          range_max: 0.65,
+          count: 4,
+        },
+        {
+          label: "0.65 - 0.75 (Moderate)",
+          range_min: 0.65,
+          range_max: 0.75,
+          count: 6,
+        },
+        {
+          label: "0.75 - 0.85 (High)",
+          range_min: 0.75,
+          range_max: 0.85,
+          count: 12,
+        },
+        {
+          label: "> 0.85 (Very High)",
+          range_min: 0.85,
+          range_max: 1.0,
+          count: 20,
+        },
+      ],
       top_retrieved_documents: [{ document_id: "doc_siemens_1le1", count: 18 }],
       recent_traces: [
         {
@@ -58,6 +88,12 @@ describe("Observability & RAG Analytics Dashboard UI", () => {
       expect(screen.getByText("42")).toBeDefined();
       expect(screen.getByText("90.5%")).toBeDefined();
       expect(screen.getByText("84.0%")).toBeDefined();
+      expect(
+        screen.getByText(/Confidence Score Distribution Histogram/i)
+      ).toBeDefined();
+      expect(
+        screen.getByText(/Most-Retrieved Source Datasheets/i)
+      ).toBeDefined();
       expect(
         screen.getByText(/What is Siemens 1LE1 rated torque/i)
       ).toBeDefined();

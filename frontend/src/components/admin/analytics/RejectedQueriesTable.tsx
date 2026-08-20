@@ -25,7 +25,7 @@ export function RejectedQueriesTable({
         </span>
       </div>
 
-      <p className="text-xs font-mono text-[var(--color-sage-gray)]">
+      <p className="text-xs text-[var(--color-sage-gray)] font-sans">
         Inquiries rejected by the cross-encoder guardrail (&theta; &lt; 0.65).
         Use this log to identify missing equipment models and upload required
         datasheets.
