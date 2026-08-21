@@ -9,7 +9,9 @@ from qdrant_client.models import (
     Filter,
     FieldCondition,
     MatchValue,
+    PayloadSchemaType,
 )
+
 from app.core.config import settings
 from app.services.chunker import ParentChunk, ChildChunk
 
@@ -73,6 +75,26 @@ class VectorStoreService:
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
             )
+
+        # Ensure keyword payload index exists on document_id for filtering
+        try:
+            self.client.create_payload_index(
+                collection_name=self.collection_name,
+                field_name="document_id",
+                field_schema=PayloadSchemaType.KEYWORD,
+            )
+        except Exception:
+            pass
+
+        try:
+            self.client.create_payload_index(
+                collection_name=self.collection_name,
+                field_name="category",
+                field_schema=PayloadSchemaType.KEYWORD,
+            )
+        except Exception:
+            pass
+
 
     def upsert_chunks(
         self,

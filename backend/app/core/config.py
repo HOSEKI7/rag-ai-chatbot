@@ -22,9 +22,10 @@ class Settings(BaseSettings):
 
     # External APIs
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-3.6-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "openai/gpt-oss-120b"
+
 
     # Vector DB
     QDRANT_URL: str = ""

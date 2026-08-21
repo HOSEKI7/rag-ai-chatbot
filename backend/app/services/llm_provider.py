@@ -123,6 +123,9 @@ class LLMProviderService:
         """Calls Google Gemini API with SSE streaming and automatic model retry."""
         candidate_models = [self.gemini_model]
         for fallback in [
+            "gemini-3.5-flash-lite",
+            "gemini-flash-lite-latest",
+            "gemini-3.1-flash-lite",
             "gemini-3.6-flash",
             "gemini-3.5-flash",
             "gemini-3.7-flash",
@@ -131,6 +134,7 @@ class LLMProviderService:
         ]:
             if fallback not in candidate_models:
                 candidate_models.append(fallback)
+
 
         last_err: Optional[Exception] = None
         has_emitted = False
