@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { ChatMessage, CitationItem } from "@/types/chat";
 import { downloadTechnicalReportPdf } from "@/lib/utils/pdfExport";
 
@@ -194,6 +195,15 @@ export function MessageItem({
         {/* Author Label, Timestamp, Provider & PDF Export Action */}
         <div className="flex items-center justify-between mb-2 text-xs font-mono">
           <div className="flex items-center gap-2">
+            {!isUser && (
+              <Image
+                src="/contexure.webp"
+                alt="Contexure Agent"
+                width={16}
+                height={16}
+                className="w-4 h-4 object-contain"
+              />
+            )}
             <span
               className={`font-semibold ${
                 isUser

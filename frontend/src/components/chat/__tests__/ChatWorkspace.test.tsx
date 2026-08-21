@@ -66,4 +66,10 @@ describe("Interactive Chat Workspace", () => {
       ).toBeDefined();
     });
   });
+
+  it("renders Contexure brand logo in header and empty state", () => {
+    render(<ChatPage />);
+    const logos = screen.getAllByAltText("Contexure Logo");
+    expect(logos.length).toBeGreaterThanOrEqual(2);
+  });
 });

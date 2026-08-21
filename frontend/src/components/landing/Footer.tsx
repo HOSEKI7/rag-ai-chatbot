@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -8,7 +9,13 @@ export function Footer() {
           {/* Col 1: Brand Info */}
           <div className="md:col-span-5">
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-sage-leaf)]" />
+              <Image
+                src="/contexure.webp"
+                alt="Contexure Logo"
+                width={32}
+                height={32}
+                className="w-8 h-8 object-contain"
+              />
               <span className="font-sans text-2xl font-medium tracking-tight text-[var(--surface-linen)]">
                 Contexure
               </span>

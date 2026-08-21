@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 interface HeaderProps {
   isHealthy?: boolean;
@@ -11,8 +12,15 @@ export function Header({ isHealthy }: HeaderProps) {
     <header className="w-full border-b border-[var(--color-mist)] bg-[var(--surface-linen)] sticky top-0 z-50 backdrop-blur-md">
       <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
         {/* Brand Mark (Akkurat Sans) */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-sage-leaf)] group-hover:scale-110 transition-transform" />
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <Image
+            src="/contexure.webp"
+            alt="Contexure Logo"
+            width={28}
+            height={28}
+            className="w-7 h-7 object-contain transition-transform group-hover:scale-105"
+            priority
+          />
           <span className="font-sans text-xl font-medium text-[var(--color-olive-press)] tracking-tight">
             Contexure
           </span>

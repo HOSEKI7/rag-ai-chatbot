@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 interface EmptyStateProps {
   onSelectQuery: (query: string) => void;
 }
@@ -38,6 +40,17 @@ const STARTER_PROMPTS = [
 export function EmptyState({ onSelectQuery }: EmptyStateProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-12 px-4 max-w-3xl mx-auto text-center">
+      {/* Brand Logo Hero */}
+      <div className="mb-4">
+        <Image
+          src="/contexure.webp"
+          alt="Contexure Logo"
+          width={52}
+          height={52}
+          className="w-13 h-13 object-contain mx-auto"
+        />
+      </div>
+
       {/* Field Note Badge */}
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[var(--radius-tags)] bg-[var(--surface-bone)] border border-[var(--color-mist)] mb-6">
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-sage-leaf)]" />

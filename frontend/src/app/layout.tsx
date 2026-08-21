@@ -1,16 +1,20 @@
-import type { Metadata } from 'next'
-import './globals.css'
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'Contexure — AI Technical Support & Product Knowledge',
+  title: "Contexure — AI Technical Support & Product Knowledge",
   description:
-    'Domain-specific RAG Chatbot for industrial equipment technical support and datasheet Q&A.',
-}
+    "Domain-specific RAG Chatbot for industrial equipment technical support and datasheet Q&A.",
+  icons: {
+    icon: "/contexure.webp",
+    apple: "/contexure.webp",
+  },
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
@@ -18,5 +22,5 @@ export default function RootLayout({
         {children}
       </body>
     </html>
-  )
+  );
 }

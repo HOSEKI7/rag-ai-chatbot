@@ -44,4 +44,9 @@ describe("Admin Authentication & Document Ingestion Management UI", () => {
     expect(screen.getByRole("combobox")).toBeDefined();
     expect(screen.getByText("AC Induction Motor")).toBeDefined();
   });
+
+  it("renders Contexure brand logo in admin header", () => {
+    render(<AdminPage />);
+    expect(screen.getByAltText("Contexure Logo")).toBeDefined();
+  });
 });

@@ -42,4 +42,10 @@ describe("Adaline Editorial Landing Page", () => {
     expect(screen.getByText(/ACS580 VFD/i)).toBeDefined();
     expect(screen.getByText(/E2E Proximity Sensor/i)).toBeDefined();
   });
+
+  it("renders Contexure brand logo images in navigation header and footer", () => {
+    render(<HomePage />);
+    const logos = screen.getAllByAltText("Contexure Logo");
+    expect(logos.length).toBeGreaterThanOrEqual(2);
+  });
 });

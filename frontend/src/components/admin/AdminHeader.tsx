@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 export function AdminHeader() {
   return (
@@ -16,12 +17,18 @@ export function AdminHeader() {
             <span>Landing</span>
           </Link>
           <div className="h-4 w-px bg-[var(--color-mist)]" />
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-sage-leaf)]" />
+          <Link href="/" className="flex items-center gap-2 group">
+            <Image
+              src="/contexure.webp"
+              alt="Contexure Logo"
+              width={24}
+              height={24}
+              className="w-6 h-6 object-contain group-hover:scale-105 transition-transform"
+            />
             <span className="font-sans text-base font-medium text-[var(--color-olive-press)]">
               Contexure Admin Portal
             </span>
-          </div>
+          </Link>
         </div>
 
         {/* Right: Quick Links */}

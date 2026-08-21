@@ -13,3 +13,4 @@ flashrank>=0.2.9
 pypdf>=5.0.0
 pymupdf4llm>=0.0.17
 tiktoken>=0.8.0
+gradio>=4.0.0

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface AuthGateProps {
   children: React.ReactNode;
@@ -46,6 +47,16 @@ export function AuthGate({ children }: AuthGateProps) {
     return (
       <div className="min-h-screen bg-[var(--surface-linen)] flex items-center justify-center p-6 text-[var(--color-forest-ink)]">
         <div className="max-w-md w-full bg-[var(--surface-bone)] border border-[var(--color-mist)] rounded-[var(--radius-cards)] p-8 space-y-6 text-center">
+          <div className="flex justify-center">
+            <Image
+              src="/contexure.webp"
+              alt="Contexure Logo"
+              width={48}
+              height={48}
+              className="w-12 h-12 object-contain"
+            />
+          </div>
+
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[var(--radius-tags)] bg-[var(--color-blush)] border border-[var(--color-crimson-specimen)]/30 text-[var(--color-crimson-specimen)] text-xs font-mono">
             <span>⛔</span>
             <span>RESTRICTED ACCESS · OPERATOR ONLY</span>
