@@ -1,5 +1,9 @@
+import os
+from pathlib import Path
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -18,9 +22,9 @@ class Settings(BaseSettings):
 
     # External APIs
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_MODEL: str = "gemini-3.6-flash"
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
 
     # Vector DB
     QDRANT_URL: str = ""
@@ -33,7 +37,7 @@ class Settings(BaseSettings):
     TOP_K_RERANK: int = 5
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(str(BASE_DIR / ".env"), ".env", "backend/.env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
@@ -41,3 +45,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+

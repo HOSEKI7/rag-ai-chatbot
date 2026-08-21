@@ -122,7 +122,13 @@ class LLMProviderService:
     ) -> AsyncGenerator[StreamToken, None]:
         """Calls Google Gemini API with SSE streaming and automatic model retry."""
         candidate_models = [self.gemini_model]
-        for fallback in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-2.5-flash"]:
+        for fallback in [
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.7-flash",
+            "gemini-flash-latest",
+            "gemini-1.5-flash",
+        ]:
             if fallback not in candidate_models:
                 candidate_models.append(fallback)
 
@@ -173,45 +179,72 @@ class LLMProviderService:
         if last_err:
             raise last_err
 
-
     async def _stream_groq(
         self,
         system_prompt: str,
         user_prompt: str,
     ) -> AsyncGenerator[StreamToken, None]:
-        """Calls Groq Cloud API with OpenAI-compatible SSE streaming."""
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.groq_api_key}",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "model": self.groq_model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": 0.2,
-            "max_tokens": 2048,
-            "stream": True,
-        }
+        """Calls Groq Cloud API with OpenAI-compatible SSE streaming and automatic model retry."""
+        candidate_models = [self.groq_model]
+        for fallback in [
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.6-27b",
+            "groq/compound",
+            "llama-3.3-70b-versatile",
+        ]:
+            if fallback not in candidate_models:
+                candidate_models.append(fallback)
 
-        def _extract_groq_token(data: Dict[str, Any]) -> Optional[str]:
-            choices = data.get("choices", [])
-            if choices:
-                return choices[0].get("delta", {}).get("content")
-            return None
+        last_err: Optional[Exception] = None
+        has_emitted = False
 
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            async for token in _parse_sse_lines(
-                client=client,
-                url=url,
-                headers=headers,
-                payload=payload,
-                extract_token_fn=_extract_groq_token,
-                provider_name="groq_fallback",
-            ):
-                yield token
+        for model in candidate_models:
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.groq_api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": 0.2,
+                "max_tokens": 2048,
+                "stream": True,
+            }
+
+            def _extract_groq_token(data: Dict[str, Any]) -> Optional[str]:
+                choices = data.get("choices", [])
+                if choices:
+                    return choices[0].get("delta", {}).get("content")
+                return None
+
+            try:
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    async for token in _parse_sse_lines(
+                        client=client,
+                        url=url,
+                        headers=headers,
+                        payload=payload,
+                        extract_token_fn=_extract_groq_token,
+                        provider_name="groq_fallback",
+                    ):
+                        has_emitted = True
+                        yield token
+                if has_emitted:
+                    return
+            except Exception as e:
+                last_err = e
+                if has_emitted:
+                    raise
+                logger.warning(f"Groq model {model} failed: {e}. Trying next candidate model...")
+
+        if last_err:
+            raise last_err
+
 
     async def _stream_local_dev(self, user_prompt: str) -> AsyncGenerator[StreamToken, None]:
         """Synthetic local generator for testing and offline development."""
