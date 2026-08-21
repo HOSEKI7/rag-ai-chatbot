@@ -120,37 +120,59 @@ class LLMProviderService:
         system_prompt: str,
         user_prompt: str,
     ) -> AsyncGenerator[StreamToken, None]:
-        """Calls Google Gemini API with SSE streaming."""
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:streamGenerateContent"
-            f"?key={self.gemini_api_key}&alt=sse"
-        )
-        payload = {
-            "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-            "system_instruction": {"parts": [{"text": system_prompt}]},
-            "generation_config": {"temperature": 0.2, "max_output_tokens": 2048},
-        }
+        """Calls Google Gemini API with SSE streaming and automatic model retry."""
+        candidate_models = [self.gemini_model]
+        for fallback in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-2.5-flash"]:
+            if fallback not in candidate_models:
+                candidate_models.append(fallback)
 
-        def _extract_gemini_token(data: Dict[str, Any]) -> Optional[str]:
-            candidates = data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                for part in parts:
-                    txt = part.get("text")
-                    if txt:
-                        return txt
-            return None
+        last_err: Optional[Exception] = None
+        has_emitted = False
 
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            async for token in _parse_sse_lines(
-                client=client,
-                url=url,
-                headers={},
-                payload=payload,
-                extract_token_fn=_extract_gemini_token,
-                provider_name="gemini",
-            ):
-                yield token
+        for model in candidate_models:
+            url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent"
+                f"?key={self.gemini_api_key}&alt=sse"
+            )
+            payload = {
+                "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                "system_instruction": {"parts": [{"text": system_prompt}]},
+                "generation_config": {"temperature": 0.2, "max_output_tokens": 2048},
+            }
+
+            def _extract_gemini_token(data: Dict[str, Any]) -> Optional[str]:
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    for part in parts:
+                        txt = part.get("text")
+                        if txt:
+                            return txt
+                return None
+
+            try:
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    async for token in _parse_sse_lines(
+                        client=client,
+                        url=url,
+                        headers={},
+                        payload=payload,
+                        extract_token_fn=_extract_gemini_token,
+                        provider_name="gemini",
+                    ):
+                        has_emitted = True
+                        yield token
+                if has_emitted:
+                    return
+            except Exception as e:
+                last_err = e
+                if has_emitted:
+                    raise
+                logger.warning(f"Gemini model {model} failed: {e}. Trying next candidate model...")
+
+        if last_err:
+            raise last_err
+
 
     async def _stream_groq(
         self,
