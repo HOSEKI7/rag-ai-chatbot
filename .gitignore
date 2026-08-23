@@ -44,3 +44,5 @@ yarn-error.log*
 pnpm-debug.log*
 backend/data/
 
+# Other
+portfolio-showcase.html
