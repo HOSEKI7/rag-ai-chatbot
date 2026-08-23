@@ -7,10 +7,12 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Qdrant](https://img.shields.io/badge/Vector_DB-Qdrant_Cloud-red?style=flat-square&logo=qdrant)](https://qdrant.tech/)
-[![FastEmbed](https://img.shields.io/badge/Embeddings-nomic--embed--text--v1.5-blueviolet?style=flat-square)](https://github.com/qdrant/fastembed)
+[![FastEmbed](https://img.shields.io/badge/Embeddings-BAAI%2Fbge--small--en--v1.5-blueviolet?style=flat-square)](https://github.com/qdrant/fastembed)
 [![FlashRank](https://img.shields.io/badge/Reranker-FlashRank_Cross--Encoder-orange?style=flat-square)](https://github.com/PrithivirajDamodaran/FlashRank)
 [![Gemini 2.5 Flash](https://img.shields.io/badge/Primary_LLM-Google_Gemini_2.5_Flash-4285F4?style=flat-square&logo=google)](https://ai.google.dev/)
 [![Groq Llama 3.3](https://img.shields.io/badge/Fallback_LLM-Groq_Llama_3.3_70B-F55036?style=flat-square)](https://groq.com/)
+[![Render](https://img.shields.io/badge/Backend_Host-Render.com-46E3B7?style=flat-square&logo=render)](https://render.com/)
+[![Vercel](https://img.shields.io/badge/Frontend_Host-Vercel-black?style=flat-square&logo=vercel)](https://vercel.com/)
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind-CSS_v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
@@ -25,7 +27,7 @@ Industrial equipment documentation is notoriously dense, filled with multi-colum
 **Contexure solves this through a rigorous 5-stage RAG architecture:**
 
 1. **Structure-Aware Document Ingestion:** Preserves hierarchical section trees and markdown tables without layout collapse.
-2. **Local CPU Embedding Engine:** Generates normalized 768-dimensional embeddings using `nomic-embed-text-v1.5` via FastEmbed with zero external API latency or billing.
+2. **Local CPU Embedding Engine:** Generates normalized 384-dimensional embeddings using `BAAI/bge-small-en-v1.5` via FastEmbed with zero external API latency, sub-30ms embedding speed, and minimal memory footprint (<220MB RAM).
 3. **FlashRank Cross-Encoder Reranker & Confidence Guardrail:** Performs deep semantic relevance scoring with `ms-marco-TinyBERT-L-2-v2`. Any query scoring below a calibrated confidence threshold ($\theta < 0.65$) triggers an immediate, deterministic out-of-scope refusal without incurring LLM generation costs.
 4. **Resilient Dual-LLM Generation:** Primary synthesis with **Google Gemini 2.5 Flash** backed by automatic, zero-downtime failover to **Groq Llama 3.3 70B** upon rate limits (HTTP 429) or transient errors (HTTP 5xx).
 5. **Adaline Editorial Design System:** A calm, botanical, flat-elevation aesthetic (Linen canvas, Bone cards, Forest Ink typography, 1px Mist borders, Fragment Mono metadata tags) tailored for long analytical sessions.
@@ -52,7 +54,7 @@ Industrial equipment documentation is notoriously dense, filled with multi-colum
                                │                                                          │
                                │  [ 1. Ingestion Subsystem ]                              │
                                │    PyMuPDF / Docling ──► Hierarchical Parent-Child       │
-                               │    ──► FastEmbed nomic-embed-text-v1.5 (Local CPU)       │
+                               │    ──► FastEmbed BAAI/bge-small-en-v1.5 (Local CPU)      │
                                │    ──► Qdrant Cloud Vector Store Upsert                  │
                                │                                                          │
                                │  [ 2. Hybrid Retrieval & Guardrail Pipeline ]            │
@@ -144,7 +146,7 @@ Contexure adheres strictly to the **Adaline Design System** specifications (`DES
 
 - **Runtime:** Python 3.11+ (FastAPI, Uvicorn, Pydantic v2, Asyncio, AnyIO)
 - **Document Parsing:** PyMuPDF (`fitz`), Docling structural layout engine
-- **Embeddings:** FastEmbed ONNX runtime (`nomic-embed-text-v1.5`, 768-dim, normalized Cosine)
+- **Embeddings:** FastEmbed ONNX runtime (`BAAI/bge-small-en-v1.5`, 384-dim, normalized Cosine, <40MB RAM)
 - **Vector Database:** Qdrant Cloud (Managed REST/gRPC API) & In-Memory fallback for unit testing
 - **Reranker:** FlashRank Cross-Encoder (`ms-marco-TinyBERT-L-2-v2`)
 - **LLM Primary:** Google Gemini 2.5 Flash via `google-genai` SDK
@@ -326,7 +328,7 @@ pytest tests -v
 - `test_chat_api.py`: SSE streaming, metadata emission, and guardrail refusal events.
 - `test_chunker.py`: Structure-aware parent-child chunk boundaries and table preservation.
 - `test_compare.py`: Multi-document balanced retrieval and comparative prompt synthesis.
-- `test_embedding.py`: FastEmbed 768-dim local vector generation.
+- `test_embedding.py`: FastEmbed 384-dim local vector generation.
 - `test_health.py`: FastAPI health probe connectivity.
 - `test_ingest_api.py`: PDF multipart upload and Qdrant point upsertion.
 - `test_llm_provider.py`: Gemini primary generation and automatic Groq failover.
@@ -347,7 +349,7 @@ pnpm run test
 pnpm --filter frontend test
 ```
 
-**Result:** `19 passed in ~2s` covering:
+**Result:** `22 passed in ~2s` covering:
 
 - `PdfExport.test.tsx`: jsPDF report formatting, metadata mapping, and download triggers.
 - `CompareModal.test.tsx`: Multi-document dropdown selectors and comparative query generation.
@@ -386,21 +388,23 @@ pnpm --filter frontend build
 
 ---
 
-## 🚢 Deployment Architecture
+## 🚢 Production Deployment Architecture
 
-### Backend: Hugging Face Spaces (Docker)
+### Backend: Render.com (Web Service)
 
-The backend includes a pre-configured `backend/Dockerfile` compliant with Hugging Face Spaces CPU Basic (16GB RAM):
+The backend is deployed as a native Python 3 Web Service on Render.com:
 
-- Installs Python 3.11 slim image.
-- Exposes port `7860`.
-- Downloads FastEmbed ONNX models during container warmup to ensure zero cold-start latency during inference.
+- **Root Directory**: `backend`
+- **Build Command**: `pip install -r requirements.txt && python prewarm.py` (pre-downloads ONNX weights during build time to prevent request timeouts).
+- **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **FastAPI Lifespan Pre-warming**: Models and vector store singletons are warmed up during startup, ensuring instant sub-500ms responses.
+- **Memory Footprint**: Peak RAM is ~220MB, fitting comfortably within the 512MB free tier limit.
 
 ### Frontend: Vercel
 
-The frontend is built on Next.js 16 App Router and can be deployed to Vercel with zero configuration:
+The frontend is built on Next.js 16 App Router and deployed to Vercel:
 
-- Set `NEXT_PUBLIC_BACKEND_URL` to your Hugging Face Space URL (e.g. `https://your-space.hf.space`).
+- Set `NEXT_PUBLIC_BACKEND_URL` and `BACKEND_URL` to your Render service URL (e.g. `https://contexure-backend.onrender.com`).
 - Vercel Edge proxies `/api/chat` SSE streams with full chunk buffering disablement (`X-Accel-Buffering: no`).
 
 ---

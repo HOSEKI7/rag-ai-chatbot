@@ -33,7 +33,7 @@ A second-pass scoring of retrieved chunks (via FlashRank) that reorders them by 
 _Avoid_: Re-sorting, re-scoring
 
 **Ingestion Pipeline**:
-The end-to-end process of parsing a source document (Docling), chunking it (structure-aware + hierarchical), embedding the chunks (nomic-embed-text), and storing them in Qdrant.
+The end-to-end process of parsing a source document (Docling / PyMuPDF), chunking it (structure-aware + hierarchical), embedding the chunks (FastEmbed BAAI/bge-small-en-v1.5), and storing them in Qdrant.
 _Avoid_: Upload pipeline, indexing pipeline (indexing is one step within ingestion)
 
 **Knowledge Base**:
