@@ -65,10 +65,20 @@ class VectorStoreService:
             # Fallback to in-memory local storage when no external credentials are configured
             self.client = QdrantClient(location=":memory:")
 
-    def ensure_collection(self, vector_size: int = 768) -> None:
+    def ensure_collection(self, vector_size: int = 384) -> None:
         """Creates Qdrant collection with Cosine distance if it does not already exist."""
         collections = self.client.get_collections().collections
         exists = any(c.name == self.collection_name for c in collections)
+
+        if exists:
+            try:
+                info = self.client.get_collection(self.collection_name)
+                current_size = info.config.params.vectors.size
+                if current_size != vector_size:
+                    self.client.delete_collection(self.collection_name)
+                    exists = False
+            except Exception:
+                pass
 
         if not exists:
             self.client.create_collection(
@@ -105,7 +115,7 @@ class VectorStoreService:
         """
         Stores child vector embeddings and parent text payloads into Qdrant.
         """
-        self.ensure_collection(vector_size=len(embeddings[0]) if embeddings else 768)
+        self.ensure_collection(vector_size=len(embeddings[0]) if embeddings else 384)
 
         # Map parent ID to full parent chunk text
         parent_map = {p.id: p.text for p in parents}

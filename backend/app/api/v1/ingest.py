@@ -35,7 +35,7 @@ async def ingest_document(
     Ingest a PDF source document:
     1. Parse layout structure & tables into markdown via Docling / PyMuPDF
     2. Execute structure-aware & hierarchical parent-child chunking
-    3. Generate normalized 768-dim embeddings locally with nomic-embed-text
+    3. Generate normalized 384-dim embeddings locally with BGE-small
     4. Store chunks and payloads in Qdrant vector database
     """
     if not file.filename or not file.filename.lower().endswith(".pdf"):

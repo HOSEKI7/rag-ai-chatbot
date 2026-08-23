@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from fastembed import TextEmbedding
 from flashrank import Ranker
 
@@ -7,8 +7,8 @@ logger = logging.getLogger("prewarm")
 
 
 def prewarm_models():
-    logger.info("Pre-downloading FastEmbed model: nomic-ai/nomic-embed-text-v1.5...")
-    embedder = TextEmbedding(model_name="nomic-ai/nomic-embed-text-v1.5")
+    logger.info("Pre-downloading FastEmbed model: BAAI/bge-small-en-v1.5...")
+    embedder = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
     list(embedder.embed(["warmup"]))
     logger.info("FastEmbed model pre-warmed successfully.")
 

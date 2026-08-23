@@ -28,7 +28,7 @@ def create_sample_pdf_bytes() -> bytes:
 async def test_ingest_document_and_verify_qdrant_points(monkeypatch):
     """Verify POST /api/v1/ingest and direct Qdrant vector & payload verification."""
     test_store = VectorStoreService(location=":memory:", collection_name="test_ingest_collection")
-    test_store.ensure_collection(vector_size=768)
+    test_store.ensure_collection(vector_size=384)
     monkeypatch.setattr("app.api.v1.ingest.get_vector_store", lambda: test_store)
 
     pdf_bytes = create_sample_pdf_bytes()
@@ -57,7 +57,7 @@ async def test_ingest_document_and_verify_qdrant_points(monkeypatch):
         )
         assert len(points) == res_data["child_chunk_count"]
         first_point = points[0]
-        assert len(first_point.vector) == 768
+        assert len(first_point.vector) == 384
         assert first_point.payload["document_id"] == res_data["document_id"]
         assert first_point.payload["document_title"] == "Siemens 1LE1 Motor Datasheet"
         assert first_point.payload["category"] == "Motor"

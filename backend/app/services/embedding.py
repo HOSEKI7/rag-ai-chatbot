@@ -1,14 +1,15 @@
 from typing import List
 from fastembed import TextEmbedding
 
-# Canonical embedding model for Contexure RAG (8192 token context window, 768 dimensions)
-DEFAULT_EMBEDDING_MODEL = "nomic-ai/nomic-embed-text-v1.5"
+# Lightweight, high-accuracy embedding model for Contexure RAG (384 dimensions, <40MB RAM)
+DEFAULT_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_DIMENSION = 384
 
 
 class EmbeddingService:
     """
     Local embedding engine running ONNX Runtime on CPU via FastEmbed.
-    Produces normalized 768-dimensional vectors with zero external API calls.
+    Produces normalized 384-dimensional vectors with zero external API calls.
     """
 
     def __init__(self, model_name: str = DEFAULT_EMBEDDING_MODEL):

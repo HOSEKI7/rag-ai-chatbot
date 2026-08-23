@@ -2,8 +2,8 @@ import pytest
 from app.services.embedding import get_embedding_service, EmbeddingService
 
 
-def test_embedding_service_produces_768_dim_vectors():
-    """Verify local FastEmbed engine produces normalized 768-dim embeddings."""
+def test_embedding_service_produces_384_dim_vectors():
+    """Verify local FastEmbed engine produces normalized 384-dim embeddings."""
     service = get_embedding_service()
     
     # Test document embedding
@@ -11,7 +11,7 @@ def test_embedding_service_produces_768_dim_vectors():
     doc_vector = service.embed_document(doc_text)
     
     assert isinstance(doc_vector, list)
-    assert len(doc_vector) == 768
+    assert len(doc_vector) == 384
     assert all(isinstance(val, float) for val in doc_vector)
 
     # Test query embedding
@@ -19,7 +19,7 @@ def test_embedding_service_produces_768_dim_vectors():
     query_vector = service.embed_query(query_text)
     
     assert isinstance(query_vector, list)
-    assert len(query_vector) == 768
+    assert len(query_vector) == 384
 
 
 def test_embedding_service_batch():
@@ -31,5 +31,5 @@ def test_embedding_service_batch():
     ]
     vectors = service.embed_documents(texts)
     assert len(vectors) == 2
-    assert len(vectors[0]) == 768
-    assert len(vectors[1]) == 768
+    assert len(vectors[0]) == 384
+    assert len(vectors[1]) == 384

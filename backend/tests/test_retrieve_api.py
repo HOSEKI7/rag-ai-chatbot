@@ -8,7 +8,7 @@ from app.services.vector_store import VectorStoreService
 @pytest.fixture
 def test_vector_store():
     store = VectorStoreService(location=":memory:", collection_name="test_retrieve_api_store")
-    store.ensure_collection(vector_size=768)
+    store.ensure_collection(vector_size=384)
 
     parent = ParentChunk(
         id="doc-abb-p001",

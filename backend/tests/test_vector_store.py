@@ -7,7 +7,7 @@ from app.services.chunker import ParentChunk, ChildChunk
 def in_memory_vector_store():
     # Use in-memory Qdrant instance for fast, self-contained unit/integration testing
     store = VectorStoreService(location=":memory:", collection_name="test_collection")
-    store.ensure_collection(vector_size=768)
+    store.ensure_collection(vector_size=384)
     return store
 
 
@@ -38,7 +38,7 @@ def test_upsert_and_retrieve_chunks(in_memory_vector_store: VectorStoreService):
         is_table=False,
     )
 
-    dummy_vector = [0.1] * 768
+    dummy_vector = [0.1] * 384
 
     store.upsert_chunks(
         parents=[parent],
@@ -91,7 +91,7 @@ def test_list_and_delete_documents(in_memory_vector_store: VectorStoreService):
     store.upsert_chunks(
         parents=[parent],
         children=[child],
-        embeddings=[[0.05] * 768],
+        embeddings=[[0.05] * 384],
     )
 
     docs = store.list_indexed_documents()
