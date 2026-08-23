@@ -1,2 +1,7 @@
 packages:
   - "frontend"
+
+ignoredBuiltDependencies:
+  - core-js
+  - sharp
+  - unrs-resolver
