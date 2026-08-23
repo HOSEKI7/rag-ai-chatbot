@@ -1,13 +1,3 @@
----
-title: Contexure Backend
-emoji: ⚡
-colorFrom: green
-colorTo: indigo
-sdk: gradio
-app_file: app.py
-pinned: false
----
-
 # Contexure Backend API
 
 FastAPI-powered RAG Engine for industrial datasheet technical support and specification Q&A.

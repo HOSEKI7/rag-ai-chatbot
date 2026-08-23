@@ -48,6 +48,11 @@ def populated_vector_store():
 async def test_post_chat_sse_stream_in_scope(populated_vector_store, monkeypatch):
     """Verify POST /api/v1/chat yields SSE metadata, token stream, and done events."""
     monkeypatch.setattr("app.services.retrieval_pipeline.get_vector_store", lambda: populated_vector_store)
+    from app.services.llm_provider import LLMProviderService
+    mock_provider = LLMProviderService(gemini_api_key="", groq_api_key="")
+    monkeypatch.setattr("app.api.v1.chat.get_llm_provider", lambda: mock_provider)
+
+
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

@@ -28,8 +28,9 @@ RUN useradd -m -u 1000 user && \
     chown -R user:user /app
 USER user
 
-# Expose Hugging Face Spaces standard port
-EXPOSE 7860
+# Expose default port
+EXPOSE 8000
 
-# Start FastAPI with Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Start FastAPI with dynamic PORT fallback
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+
