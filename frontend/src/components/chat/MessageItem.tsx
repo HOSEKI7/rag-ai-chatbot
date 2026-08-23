@@ -5,6 +5,8 @@ import Image from "next/image";
 import { ChatMessage, CitationItem } from "@/types/chat";
 import { downloadTechnicalReportPdf } from "@/lib/utils/pdfExport";
 
+import { MarkdownRenderer } from "./MarkdownRenderer";
+
 interface MessageItemProps {
   message: ChatMessage;
   originatingQuery?: string;
@@ -32,157 +34,6 @@ export function MessageItem({
     } finally {
       setIsExporting(false);
     }
-  };
-
-  // Helper to render text with interactive clickable citation badges
-  const renderInlineCitations = (text: string, citations?: CitationItem[]) => {
-    if (!text) return null;
-
-    const regex = /\[(\d+)\]/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = regex.exec(text)) !== null) {
-      const matchIndex = match.index;
-      const citationNumber = parseInt(match[1], 10);
-
-      if (matchIndex > lastIndex) {
-        parts.push(text.substring(lastIndex, matchIndex));
-      }
-
-      const matchedCitation = citations?.find(
-        (c) => c.index === citationNumber
-      );
-
-      parts.push(
-        <button
-          key={`cite-${matchIndex}`}
-          onClick={() => {
-            if (matchedCitation) {
-              onCitationClick(matchedCitation);
-            }
-          }}
-          className="inline-flex items-center px-1.5 py-0.2 mx-0.5 rounded-[var(--radius-tags)] bg-[var(--color-eucalyptus)] text-[var(--color-forest-ink)] hover:bg-[var(--color-lichen)] border border-[var(--color-lichen)] text-[11px] font-mono font-medium transition-colors cursor-pointer align-baseline"
-          title={
-            matchedCitation
-              ? `${matchedCitation.document_title} (Page ${matchedCitation.page_number})`
-              : `Citation ${citationNumber}`
-          }
-        >
-          [{citationNumber}]
-        </button>
-      );
-
-      lastIndex = regex.lastIndex;
-    }
-
-    if (lastIndex < text.length) {
-      parts.push(text.substring(lastIndex));
-    }
-
-    return parts;
-  };
-
-  // Helper to parse markdown blocks including comparison tables
-  const renderFormattedBlocks = (
-    content: string,
-    citations?: CitationItem[]
-  ) => {
-    if (!content) return null;
-
-    const lines = content.split("\n");
-    const elements: React.ReactNode[] = [];
-    let tableBuffer: string[] = [];
-    let inTable = false;
-
-    const flushTable = (key: number) => {
-      if (tableBuffer.length < 2) {
-        elements.push(
-          <div key={`plain-table-${key}`} className="whitespace-pre-wrap">
-            {renderInlineCitations(tableBuffer.join("\n"), citations)}
-          </div>
-        );
-        tableBuffer = [];
-        return;
-      }
-
-      const headers = tableBuffer[0]
-        .split("|")
-        .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1)
-        .map((h) => h.trim());
-
-      // Row 1 is divider (|---|---|)
-      const dataRows = tableBuffer.slice(2).map((row) =>
-        row
-          .split("|")
-          .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1)
-          .map((cell) => cell.trim())
-      );
-
-      elements.push(
-        <div
-          key={`table-block-${key}`}
-          className="overflow-x-auto my-4 border border-[var(--color-mist)] rounded-[var(--radius-inputs)] bg-[var(--surface-bone)]"
-        >
-          <table className="w-full text-xs font-mono border-collapse divide-y divide-[var(--color-mist)]">
-            <thead className="bg-[var(--surface-bone)] text-[var(--color-olive-press)]">
-              <tr>
-                {headers.map((h, i) => (
-                  <th key={i} className="py-2.5 px-3.5 text-left font-semibold">
-                    {renderInlineCitations(h, citations)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-[var(--surface-linen)] divide-y divide-[var(--color-mist)]">
-              {dataRows.map((row, rIdx) => (
-                <tr
-                  key={rIdx}
-                  className="hover:bg-[var(--surface-bone)]/50 transition-colors"
-                >
-                  {row.map((cell, cIdx) => (
-                    <td
-                      key={cIdx}
-                      className="py-2.5 px-3.5 text-left text-[var(--color-forest-ink)]"
-                    >
-                      {renderInlineCitations(cell, citations)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-      tableBuffer = [];
-    };
-
-    lines.forEach((line, idx) => {
-      const isTableRow =
-        line.trim().startsWith("|") && line.trim().endsWith("|");
-
-      if (isTableRow) {
-        inTable = true;
-        tableBuffer.push(line);
-      } else {
-        if (inTable) {
-          inTable = false;
-          flushTable(idx);
-        }
-        elements.push(
-          <div key={`line-${idx}`} className="min-h-[1.25rem]">
-            {renderInlineCitations(line, citations)}
-          </div>
-        );
-      }
-    });
-
-    if (inTable && tableBuffer.length > 0) {
-      flushTable(lines.length);
-    }
-
-    return elements;
   };
 
   return (
@@ -262,12 +113,16 @@ export function MessageItem({
               : "bg-[var(--surface-linen)] text-[var(--color-forest-ink)] font-normal"
           }`}
         >
-          <div>
-            {renderFormattedBlocks(message.content, message.citations)}
-            {message.isStreaming && (
-              <span className="inline-block w-2 h-4 ml-1 bg-[var(--color-sage-leaf)] animate-pulse align-middle" />
-            )}
-          </div>
+          {isUser ? (
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          ) : (
+            <MarkdownRenderer
+              content={message.content}
+              citations={message.citations}
+              onCitationClick={onCitationClick}
+              isStreaming={message.isStreaming}
+            />
+          )}
         </div>
 
         {/* Citations Footer Bar on Assistant Message */}
