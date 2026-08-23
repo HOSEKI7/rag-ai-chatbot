@@ -16,7 +16,14 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
+## Production Deployment (Render.com)
+
+- **Root Directory**: `backend`
+- **Runtime**: `Python 3`
+- **Build Command**: `pip install -r requirements.txt && python prewarm.py`
+- **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
 ## API Documentation
 
-- Swagger UI: `http://localhost:8000/api/v1/docs`
-- Health Check: `http://localhost:8000/api/v1/health`
+- Swagger UI: `/api/v1/docs`
+- Health Check: `/api/v1/health`

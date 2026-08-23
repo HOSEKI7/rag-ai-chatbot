@@ -1,7 +1,36 @@
+import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.api import api_router
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Pre-warm AI models and database connections during startup for instant request handling."""
+    try:
+        from app.services.embedding import get_embedding_service
+        from app.services.reranker import get_reranker_service
+        from app.services.vector_store import get_vector_store
+
+        logger.info("Pre-warming embedding service...")
+        embedder = get_embedding_service()
+        embedder.embed_query("warmup")
+
+        logger.info("Pre-warming reranker service...")
+        get_reranker_service()
+
+        logger.info("Pre-warming vector store connection...")
+        get_vector_store()
+
+        logger.info("All RAG pipelines pre-warmed successfully.")
+    except Exception as e:
+        logger.warning(f"Error during startup pre-warming: {e}")
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -9,6 +38,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
+    lifespan=lifespan,
 )
 
 # CORS configuration
