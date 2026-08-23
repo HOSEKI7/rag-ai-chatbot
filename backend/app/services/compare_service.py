@@ -77,7 +77,7 @@ def compare_documents_pipeline(
             continue
 
         # Rerank candidates for this document
-        reranked = reranker.rerank_chunks(
+        reranked = reranker.rerank(
             query=search_query,
             candidates=raw_chunks,
             top_k=3,
@@ -89,7 +89,7 @@ def compare_documents_pipeline(
                 max_confidence = c.confidence_score
 
         combined_doc_text = "\n\n".join(
-            f"### Section: {c.section_title} (Page {c.page_number})\n{c.parent_content or c.text}"
+            f"### Section: {c.section_title} (Page {c.page_number})\n{c.parent_text or c.text}"
             for c in reranked
         )
 
@@ -106,7 +106,7 @@ def compare_documents_pipeline(
                     category=c.category,
                     section_title=c.section_title,
                     page_number=c.page_number,
-                    chunk_id=c.chunk_id,
+                    chunk_id=c.id,
                     parent_id=c.parent_id,
                     excerpt=c.text[:200] + "...",
                     confidence_score=c.confidence_score,

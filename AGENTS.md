@@ -14,6 +14,10 @@ Default vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 
 Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 
+## Device
+
+My device os is **Windows x64**, everything is running with **powershell**
+
 ## Working agreement
 
 - **Language split:** All shipped output — UI text, identifiers, code, docs — is **English**. Chat, plans, questions, and code comments to the owner are written in **Bahasa Indonesia**.
